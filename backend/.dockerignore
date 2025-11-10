@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Build artifacts
+build/
+target/
+.gradle/
+.idea/
+
+# Environment files
+.env
+.env.local
+
+# Documentation
+*.md
+HELP.md
+README*.md
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test files
+src/test/
+
