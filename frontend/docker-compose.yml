@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  front:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: front
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NUXT_SESSION_PASSWORD=${NUXT_SESSION_PASSWORD}
+      - NUXT_BACKEND_URL=http://host.docker.internal:8080/api
+      - NUXT_PUBLIC_BACKEND_URL=http://localhost:8080/api
+    restart: unless-stopped
+    networks:
+      - mineer-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  mineer-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

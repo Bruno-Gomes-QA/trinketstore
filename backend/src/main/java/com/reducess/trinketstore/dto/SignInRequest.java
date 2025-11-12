@@ -13,12 +13,12 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request para login")
 public class SignInRequest {
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
+    @NotBlank(message = "Email é obrigatório")
+    @Email(message = "Formato de email inválido")
     @Schema(description = "Email do usuário", example = "user@example.com")
     private String email;
 
-    @NotBlank(message = "Password is required")
+    @NotBlank(message = "Senha é obrigatória")
     @Schema(description = "Senha do usuário", example = "senha123")
     private String password;
 }

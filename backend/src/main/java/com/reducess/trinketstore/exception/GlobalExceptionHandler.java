@@ -29,8 +29,44 @@ public class GlobalExceptionHandler {
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                "Validation failed",
+                "Erro de validação",
                 errors,
+                OffsetDateTime.now()
+        );
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException ex) {
+        logger.error("Erro de autenticação: {}", ex.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                ex.getMessage(),
+                null,
+                OffsetDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFoundException(UserNotFoundException ex) {
+        logger.error("Usuário não encontrado: {}", ex.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage(),
+                null,
+                OffsetDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    @ExceptionHandler(SignUpException.class)
+    public ResponseEntity<ErrorResponse> handleSignUpException(SignUpException ex) {
+        logger.error("Erro no cadastro: {}", ex.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(),
+                null,
                 OffsetDateTime.now()
         );
         return ResponseEntity.badRequest().body(errorResponse);
@@ -53,7 +89,7 @@ public class GlobalExceptionHandler {
         logger.error("Unexpected error occurred", ex);
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "An unexpected error occurred: " + ex.getMessage(),
+                "Ocorreu um erro inesperado. Por favor, tente novamente.",
                 null,
                 OffsetDateTime.now()
         );

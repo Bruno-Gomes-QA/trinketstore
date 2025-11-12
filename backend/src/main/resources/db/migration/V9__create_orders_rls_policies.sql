@@ -1,3 +1,11 @@
+-- Drop policies if they exist
+DROP POLICY IF EXISTS "orders: select own" ON public.orders;
+DROP POLICY IF EXISTS "orders: insert own" ON public.orders;
+DROP POLICY IF EXISTS "orders: update own" ON public.orders;
+DROP POLICY IF EXISTS "orders: delete own" ON public.orders;
+DROP POLICY IF EXISTS "orders: admin all" ON public.orders;
+
+-- Create policies
 CREATE POLICY "orders: select own"
 ON public.orders FOR SELECT
 TO authenticated
@@ -44,4 +52,3 @@ ON public.orders FOR ALL
 TO authenticated
 USING (public.is_admin(auth.uid()))
 WITH CHECK (public.is_admin(auth.uid()));
-

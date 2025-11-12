@@ -1,3 +1,9 @@
+-- Drop policies if they exist
+DROP POLICY IF EXISTS "users: select self" ON public.users;
+DROP POLICY IF EXISTS "users: update self" ON public.users;
+DROP POLICY IF EXISTS "users: admin all" ON public.users;
+
+-- Create policies
 CREATE POLICY "users: select self"
 ON public.users FOR SELECT
 TO authenticated
@@ -28,4 +34,3 @@ DROP TRIGGER IF EXISTS trg_prevent_role_escalation ON public.users;
 CREATE TRIGGER trg_prevent_role_escalation
 BEFORE UPDATE ON public.users
 FOR EACH ROW EXECUTE FUNCTION public.prevent_role_escalation();
-

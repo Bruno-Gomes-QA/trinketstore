@@ -5,8 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reducess.trinketstore.config.SupabaseConfig;
 import com.reducess.trinketstore.dto.*;
 import com.reducess.trinketstore.entity.User;
+import com.reducess.trinketstore.exception.AuthenticationException;
+import com.reducess.trinketstore.exception.SignUpException;
+import com.reducess.trinketstore.exception.UserNotFoundException;
 import com.reducess.trinketstore.repository.UserRepository;
-import com.reducess.trinketstore.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import okhttp3.*;
 import org.springframework.stereotype.Service;
@@ -40,11 +42,13 @@ public class AuthService {
                     .build();
 
             try (Response response = httpClient.newCall(httpRequest).execute()) {
+                String responseBody = response.body().string();
+
                 if (!response.isSuccessful()) {
-                    throw new RuntimeException("Failed to create user in Supabase: " + response.body().string());
+                    String errorMessage = parseSupabaseError(responseBody);
+                    throw new SignUpException(errorMessage);
                 }
 
-                String responseBody = response.body().string();
                 JsonNode jsonResponse = objectMapper.readTree(responseBody);
 
                 UUID authId = UUID.fromString(jsonResponse.get("user").get("id").asText());
@@ -61,8 +65,10 @@ public class AuthService {
                 UserResponse userResponse = mapToUserResponse(user);
                 return new AuthResponse(accessToken, refreshToken, expiresIn, userResponse);
             }
+        } catch (SignUpException e) {   
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Error during sign up: " + e.getMessage(), e);
+            throw new SignUpException("Erro ao criar conta. Por favor, tente novamente.", e);
         }
     }
 
@@ -82,11 +88,13 @@ public class AuthService {
                     .build();
 
             try (Response response = httpClient.newCall(httpRequest).execute()) {
+                String responseBody = response.body().string();
+
                 if (!response.isSuccessful()) {
-                    throw new RuntimeException("Invalid credentials");
+                    String errorMessage = parseSupabaseError(responseBody);
+                    throw new AuthenticationException(errorMessage);
                 }
 
-                String responseBody = response.body().string();
                 JsonNode jsonResponse = objectMapper.readTree(responseBody);
 
                 UUID authId = UUID.fromString(jsonResponse.get("user").get("id").asText());
@@ -95,14 +103,84 @@ public class AuthService {
                 Long expiresIn = jsonResponse.get("expires_in").asLong();
 
                 User user = userRepository.findByAuthId(authId)
-                        .orElseThrow(() -> new RuntimeException("User not found in database"));
+                        .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado no sistema"));
 
                 UserResponse userResponse = mapToUserResponse(user);
                 return new AuthResponse(accessToken, refreshToken, expiresIn, userResponse);
             }
+        } catch (AuthenticationException | UserNotFoundException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Error during sign in: " + e.getMessage(), e);
+            throw new AuthenticationException("Erro ao fazer login. Por favor, tente novamente.", e);
         }
+    }
+
+    private String parseSupabaseError(String responseBody) {
+        try {
+            JsonNode errorJson = objectMapper.readTree(responseBody);
+
+            if (errorJson.has("error_description")) {
+                String errorDescription = errorJson.get("error_description").asText().toLowerCase();
+
+                // Tradução de erros comuns do Supabase
+                if (errorDescription.contains("invalid login credentials") ||
+                    errorDescription.contains("invalid credentials")) {
+                    return "Email ou senha inválidos";
+                }
+
+                if (errorDescription.contains("email not confirmed")) {
+                    return "Email não confirmado. Por favor, verifique seu email";
+                }
+
+                if (errorDescription.contains("user already registered") ||
+                    errorDescription.contains("already registered")) {
+                    return "Este email já está cadastrado";
+                }
+
+                if (errorDescription.contains("password") && errorDescription.contains("weak")) {
+                    return "A senha é muito fraca. Use uma senha mais forte";
+                }
+
+                if (errorDescription.contains("invalid email")) {
+                    return "Email inválido";
+                }
+
+                if (errorDescription.contains("email rate limit exceeded")) {
+                    return "Muitas tentativas. Por favor, aguarde alguns minutos";
+                }
+            }
+
+            if (errorJson.has("message")) {
+                return translateGenericError(errorJson.get("message").asText());
+            }
+
+            if (errorJson.has("msg")) {
+                return translateGenericError(errorJson.get("msg").asText());
+            }
+
+        } catch (Exception e) {
+            // Se não conseguir parsear, retorna mensagem genérica
+        }
+
+        return "Email ou senha inválidos";
+    }
+
+    private String translateGenericError(String message) {
+        String lowerMessage = message.toLowerCase();
+
+        if (lowerMessage.contains("invalid") || lowerMessage.contains("wrong")) {
+            return "Email ou senha inválidos";
+        }
+
+        if (lowerMessage.contains("not found")) {
+            return "Usuário não encontrado";
+        }
+
+        if (lowerMessage.contains("already exists") || lowerMessage.contains("duplicate")) {
+            return "Este email já está cadastrado";
+        }
+
+        return "Erro na autenticação. Por favor, tente novamente";
     }
 
     private UserResponse mapToUserResponse(User user) {
@@ -119,4 +197,3 @@ public class AuthService {
     private record SignUpSupabaseRequest(String email, String password) {}
     private record SignInSupabaseRequest(String email, String password) {}
 }
-

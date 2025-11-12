@@ -14,18 +14,18 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request para criar nova conta")
 public class SignUpRequest {
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
+    @NotBlank(message = "Email é obrigatório")
+    @Email(message = "Formato de email inválido")
     @Schema(description = "Email do usuário", example = "user@example.com")
     private String email;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must be at least 6 characters")
+    @NotBlank(message = "Senha é obrigatória")
+    @Size(min = 6, message = "A senha deve ter no mínimo 6 caracteres")
     @Schema(description = "Senha do usuário", example = "senha123", minLength = 6)
     private String password;
 
-    @NotBlank(message = "Name is required")
-    @Size(min = 2, max = 100, message = "Name must be between 2 and 100 characters")
+    @NotBlank(message = "Nome é obrigatório")
+    @Size(min = 2, max = 100, message = "O nome deve ter entre 2 e 100 caracteres")
     @Schema(description = "Nome do usuário", example = "João Silva")
     private String name;
 }
