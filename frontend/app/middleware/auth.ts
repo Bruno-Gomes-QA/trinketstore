@@ -3,11 +3,11 @@ export default defineNuxtRouteMiddleware(() => {
   const { user } = useAuth()
 
   if (!token.value || !user.value) {
-    return navigateTo('/login')
+    return navigateTo('/sistema/login')
   }
 
   // Verificar se o usuário é admin
   if (user.value.role !== 'admin') {
-    return navigateTo('/login')
+    return navigateTo('/sistema/login')
   }
 })

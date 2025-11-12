@@ -14,7 +14,7 @@ const goBack = () => {
 }
 
 const goHome = () => {
-  navigateTo('/dashboard')
+  navigateTo('/sistema/dashboard')
 }
 
 const is404 = computed(() => props.error?.statusCode === 404)

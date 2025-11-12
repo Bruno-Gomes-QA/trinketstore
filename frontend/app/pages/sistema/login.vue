@@ -261,7 +261,7 @@ onMounted(() => {
   healthCheckInterval = setInterval(checkServerHealth, 30000)
 
   if (isAuthenticated.value) {
-    router.push('/dashboard')
+    router.push('/sistema/dashboard')
   }
 })
 
@@ -322,7 +322,7 @@ const handleSubmit = async () => {
       password,
     })
     
-    await router.push('/dashboard')
+    await router.push('/sistema/dashboard')
   } catch (err: any) {
     console.error('Login error:', err)
     

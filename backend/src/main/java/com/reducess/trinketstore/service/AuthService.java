@@ -65,7 +65,7 @@ public class AuthService {
                 UserResponse userResponse = mapToUserResponse(user);
                 return new AuthResponse(accessToken, refreshToken, expiresIn, userResponse);
             }
-        } catch (SignUpException e) {   
+        } catch (SignUpException e) {
             throw e;
         } catch (Exception e) {
             throw new SignUpException("Erro ao criar conta. Por favor, tente novamente.", e);

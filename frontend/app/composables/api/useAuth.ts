@@ -99,7 +99,7 @@ export const useAuth = () => {
     user.value = null
     userCookie.value = null
     
-    await router.push('/login')
+    await router.push('/sistema/login')
   }
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)

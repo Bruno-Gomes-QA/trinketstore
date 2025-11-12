@@ -24,37 +24,37 @@ const showIconFallback = ref(false)
 const navItems = [
   {
     title: 'Dashboard',
-    url: '/dashboard',
+    url: '/sistema/dashboard',
     icon: LayoutDashboard,
   },
   {
     title: 'Produtos',
-    url: '/produtos',
+    url: '/sistema/produtos',
     icon: Package,
   },
   {
     title: 'Pedidos',
-    url: '/pedidos',
+    url: '/sistema/pedidos',
     icon: ShoppingCart,
   },
   {
     title: 'QR Codes',
-    url: '/qrcodes',
+    url: '/sistema/qrcodes',
     icon: QrCode,
   },
   {
     title: 'Pagamentos',
-    url: '/pagamentos',
+    url: '/sistema/pagamentos',
     icon: CreditCard,
   },
   {
     title: 'Usuários',
-    url: '/usuarios',
+    url: '/sistema/usuarios',
     icon: Users,
   },
   {
     title: 'Relatórios',
-    url: '/relatorios',
+    url: '/sistema/relatorios',
     icon: BarChart3,
   },
 ]
