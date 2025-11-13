@@ -49,7 +49,7 @@ public class ProductController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Obter produto por ID", description = "Retorna os dados de um produto específico")
-    public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
+    public ResponseEntity<ProductResponse> getProductById(@PathVariable Integer id) {
         ProductResponse response = productService.getProductById(id);
         return ResponseEntity.ok(response);
     }
@@ -80,7 +80,7 @@ public class ProductController {
     @SecurityRequirement(name = "bearer-jwt")
     @Operation(summary = "Atualizar produto (Admin)", description = "Atualiza os dados de um produto")
     public ResponseEntity<ProductResponse> updateProduct(
-            @PathVariable Long id,
+            @PathVariable Integer id,
             @Valid @RequestBody UpdateProductRequest request) {
         ProductResponse response = productService.updateProduct(id, request);
         return ResponseEntity.ok(response);
@@ -90,7 +90,7 @@ public class ProductController {
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearer-jwt")
     @Operation(summary = "Deletar produto (Admin)", description = "Remove um produto do sistema")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteProduct(@PathVariable Integer id) {
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();
     }
@@ -99,7 +99,7 @@ public class ProductController {
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearer-jwt")
     @Operation(summary = "Desativar produto (Admin)", description = "Desativa um produto sem removê-lo do sistema")
-    public ResponseEntity<ProductResponse> deactivateProduct(@PathVariable Long id) {
+    public ResponseEntity<ProductResponse> deactivateProduct(@PathVariable Integer id) {
         ProductResponse response = productService.deactivateProduct(id);
         return ResponseEntity.ok(response);
     }
@@ -108,7 +108,7 @@ public class ProductController {
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearer-jwt")
     @Operation(summary = "Ativar produto (Admin)", description = "Ativa um produto desativado")
-    public ResponseEntity<ProductResponse> activateProduct(@PathVariable Long id) {
+    public ResponseEntity<ProductResponse> activateProduct(@PathVariable Integer id) {
         ProductResponse response = productService.activateProduct(id);
         return ResponseEntity.ok(response);
     }

@@ -1,8 +1,10 @@
+import type { UserRole } from '~/types/users'
+
 export interface User {
   usuarioKey: number
   usuario: string
   email: string
-  role: 'admin' | 'customer'
+  role: UserRole
 }
 
 export interface LoginCredentials {
@@ -18,7 +20,7 @@ export interface LoginResponse {
     idUser: number
     authId: string
     nomeUser: string
-    role: 'admin' | 'customer'
+    role: UserRole
     email?: string
     createdAt: string
     updatedAt: string

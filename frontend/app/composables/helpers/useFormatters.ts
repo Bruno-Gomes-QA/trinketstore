@@ -1,3 +1,13 @@
+import type { OrderStatus } from '~/types/orders'
+
+const orderStatusLabels: Record<OrderStatus, string> = {
+  pending: 'Pendente',
+  paid: 'Pago',
+  canceled: 'Cancelado',
+  fulfilled: 'Pronto para retirada',
+  picked_up: 'Retirado',
+}
+
 export const useFormatters = () => {
   const formatDate = (dateString?: string | null): string => {
     if (!dateString) return '-'
@@ -60,6 +70,16 @@ export const useFormatters = () => {
     }).format(value)
   }
 
+  const formatCurrencyFromCents = (value?: number | null): string => {
+    if (value === null || value === undefined) return formatCurrency(0)
+    return formatCurrency(value / 100)
+  }
+
+  const formatOrderStatus = (status?: OrderStatus | null): string => {
+    if (!status) return '-'
+    return orderStatusLabels[status] ?? status
+  }
+
   const formatPhone = (phone?: string | null): string => {
     if (!phone) return '-'
     
@@ -83,6 +103,8 @@ export const useFormatters = () => {
     formatCnpj,
     formatCpfCnpj,
     formatCurrency,
+    formatCurrencyFromCents,
     formatPhone,
+    formatOrderStatus,
   }
 }

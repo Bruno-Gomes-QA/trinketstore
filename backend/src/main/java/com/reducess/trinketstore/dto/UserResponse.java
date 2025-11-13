@@ -14,6 +14,7 @@ public class UserResponse {
     private Long idUser;
     private UUID authId;
     private String nomeUser;
+    private String email;
     private String role;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;

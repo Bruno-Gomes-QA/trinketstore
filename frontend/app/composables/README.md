@@ -13,7 +13,9 @@ composables/
 │   └── useBackendFetch.ts  # Cliente HTTP para API
 │
 └── helpers/          # Utilitários e funções auxiliares
-    └── useFormatters.ts  # Formatação de dados (datas, CPF, CNPJ, moeda, telefone)
+    ├── useFormatters.ts   # Formatação de dados (datas, CPF, CNPJ, moeda, telefone)
+    ├── useNormalizers.ts  # Sanitização e normalização de inputs (slug, moeda, dígitos)
+    └── useValidators.ts   # Validações reutilizáveis (nome, slug, url, email)
 ```
 
 ## 📦 Categorias
@@ -28,7 +30,9 @@ Funcionalidades fundamentais do sistema:
 
 ### Helpers (`/helpers`)
 Utilitários e funções auxiliares:
-- **useFormatters**: Formatação de dados (datas, CPF/CNPJ, moeda, telefone)
+- **useFormatters**: Formatação de dados (datas, CPF/CNPJ, moeda, telefone, status)
+- **useNormalizers**: Sanitização e normalização de entradas (slug, dígitos, centavos)
+- **useValidators**: Regras de validação reutilizáveis (nome, slug, URL, email, inteiros)
 
 ## 🔄 Auto-import
 

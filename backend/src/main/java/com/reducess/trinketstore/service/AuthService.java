@@ -59,6 +59,7 @@ public class AuthService {
                 User user = new User();
                 user.setAuthId(authId);
                 user.setNomeUser(request.getName());
+                user.setEmail(request.getEmail());
                 user.setRole("customer");
                 userRepository.save(user);
 
@@ -188,6 +189,7 @@ public class AuthService {
                 user.getIdUser(),
                 user.getAuthId(),
                 user.getNomeUser(),
+                user.getEmail(),
                 user.getRole(),
                 user.getCreatedAt(),
                 user.getUpdatedAt()

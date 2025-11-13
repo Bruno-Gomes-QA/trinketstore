@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { LayoutDashboard, Package, ShoppingCart, QrCode, CreditCard, Users, BarChart3 } from "lucide-vue-next"
+import { LayoutDashboard, Package, ShoppingCart, Users, Boxes, ClipboardList, UserCircle } from "lucide-vue-next"
 import type { SidebarProps } from '~/components/ui/sidebar'
 import { useAuth } from '~/composables/api/useAuth'
 import NavMain from '~/components/NavMain.vue'
-import NavUser from '~/components/NavUser.vue'
 import {
   Sidebar,
   SidebarContent,
@@ -22,41 +21,13 @@ const showLogoFallback = ref(false)
 const showIconFallback = ref(false)
 
 const navItems = [
-  {
-    title: 'Dashboard',
-    url: '/sistema/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Produtos',
-    url: '/sistema/produtos',
-    icon: Package,
-  },
-  {
-    title: 'Pedidos',
-    url: '/sistema/pedidos',
-    icon: ShoppingCart,
-  },
-  {
-    title: 'QR Codes',
-    url: '/sistema/qrcodes',
-    icon: QrCode,
-  },
-  {
-    title: 'Pagamentos',
-    url: '/sistema/pagamentos',
-    icon: CreditCard,
-  },
-  {
-    title: 'Usuários',
-    url: '/sistema/usuarios',
-    icon: Users,
-  },
-  {
-    title: 'Relatórios',
-    url: '/sistema/relatorios',
-    icon: BarChart3,
-  },
+  { title: 'Dashboard', url: '/sistema/dashboard', icon: LayoutDashboard },
+  { title: 'Perfil', url: '/sistema/perfil', icon: UserCircle },
+  { title: 'Usuários', url: '/sistema/usuarios', icon: Users },
+  { title: 'Produtos', url: '/sistema/produtos', icon: Package },
+  { title: 'Inventário', url: '/sistema/inventario', icon: Boxes },
+  { title: 'Pedidos', url: '/sistema/pedidos', icon: ShoppingCart },
+  { title: 'Criar Pedido', url: '/sistema/pedidos/criar', icon: ClipboardList },
 ]
 
 const userData = computed(() => ({
@@ -113,9 +84,6 @@ const userData = computed(() => ({
     <SidebarContent>
       <NavMain :items="navItems" />
     </SidebarContent>
-    <SidebarFooter>
-      <NavUser :user="userData" />
-    </SidebarFooter>
     <SidebarRail />
   </Sidebar>
 </template>

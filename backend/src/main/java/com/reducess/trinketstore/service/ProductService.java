@@ -38,7 +38,7 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public ProductResponse getProductById(Long id) {
+    public ProductResponse getProductById(Integer id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
         return mapToProductResponse(product);
@@ -80,7 +80,7 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductResponse updateProduct(Long id, UpdateProductRequest request) {
+    public ProductResponse updateProduct(Integer id, UpdateProductRequest request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
 
@@ -117,14 +117,14 @@ public class ProductService {
     }
 
     @Transactional
-    public void deleteProduct(Long id) {
+    public void deleteProduct(Integer id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
         productRepository.delete(product);
     }
 
     @Transactional
-    public ProductResponse deactivateProduct(Long id) {
+    public ProductResponse deactivateProduct(Integer id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
         product.setAtivo(false);
@@ -133,7 +133,7 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductResponse activateProduct(Long id) {
+    public ProductResponse activateProduct(Integer id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
         product.setAtivo(true);
