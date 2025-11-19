@@ -17,7 +17,7 @@ public class Inventory {
     @Column(name = "id_inventory")
     private Integer idInventory;
 
-    @Column(name = "product_id", nullable = false)
+    @Column(name = "product_id", nullable = false, unique = true)
     private Integer productId;
 
     @Column(name = "qty_on_hand", nullable = false)
@@ -27,4 +27,3 @@ public class Inventory {
     @JoinColumn(name = "product_id", insertable = false, updatable = false)
     private Product product;
 }
-

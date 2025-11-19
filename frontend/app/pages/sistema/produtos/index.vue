@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch, type Component } from 'vue'
 import {
+  AlertTriangle,
+  CheckCircle2,
+  CircleDollarSign,
   Eye,
   FileText,
   Hash,
   ImageIcon,
   Link2,
+  Loader2,
   Package,
   Pencil,
   Plus,
@@ -16,6 +20,9 @@ import {
   Tag,
   ToggleLeft,
   ToggleRight,
+  Trash2,
+  Warehouse,
+  XCircle,
 } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import {
@@ -25,6 +32,7 @@ import {
   InputGroupInput,
   InputGroupTextarea,
 } from '~/components/ui/input-group'
+import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover'
 import {
   Field,
   FieldContent,
@@ -59,6 +67,7 @@ import {
   EmptyTitle,
 } from '~/components/ui/empty'
 import { useToast } from '~/components/ui/toast/use-toast'
+import type { ProductEntity } from '~/types/products'
 
 definePageMeta({
   layout: 'sistema',
@@ -70,7 +79,7 @@ const defaultCategories = ['Colecionáveis', 'Decoração', 'Acessórios', 'Vest
 
 const { toast } = useToast()
 const { formatDateTime } = useFormatters()
-const { toSlug, sanitizeUrl } = useNormalizers()
+const { toSlug, sanitizeUrl, toCurrencyCents } = useNormalizers()
 const { isValidName, isValidSlug, isValidUrl, hasLengthBetween } = useValidators()
 const {
   products,
@@ -80,11 +89,83 @@ const {
   setFilters,
 } = useProductsList()
 const productMutations = useProductMutations()
+const inventoryMutations = useInventoryMutations()
+const priceMutations = usePriceMutations()
 
 const searchTerm = ref('')
 const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
 const categoryFilter = ref<'all' | string>('all')
 const sheetOpen = ref(false)
+const sheetMode = ref<'create' | 'edit'>('create')
+const deletePopoverOpen = ref<number | null>(null)
+const deletingProductId = ref<number | null>(null)
+const editingProductId = ref<number | null>(null)
+
+type CreationStepKey = 'product' | 'inventory' | 'price' | 'done'
+type CreationStepStatus = 'pending' | 'in_progress' | 'success' | 'error'
+interface CreationStep {
+  key: CreationStepKey
+  label: string
+  icon: Component
+  status: CreationStepStatus
+}
+
+const creationSteps = reactive<CreationStep[]>([
+  { key: 'product', label: 'Adicionando produto', icon: Package, status: 'pending' },
+  { key: 'inventory', label: 'Configurando estoque', icon: Warehouse, status: 'pending' },
+  { key: 'price', label: 'Aplicando preço vigente', icon: CircleDollarSign, status: 'pending' },
+  { key: 'done', label: 'Tudo pronto! Produto adicionado', icon: Sparkles, status: 'pending' },
+])
+const creationFlow = reactive({
+  open: false,
+  errorMessage: '',
+})
+const creationFlowRunning = ref(false)
+const creationStepStatusCopy: Record<CreationStepStatus, string> = {
+  pending: 'Aguardando próxima etapa',
+  in_progress: 'Processando...',
+  success: 'Concluído',
+  error: 'Etapa interrompida',
+}
+const CREATION_STEP_MIN_MS = 1500
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const ensureMinStepDuration = async (startedAt: number) => {
+  const elapsed = Date.now() - startedAt
+  if (elapsed < CREATION_STEP_MIN_MS) {
+    await sleep(CREATION_STEP_MIN_MS - elapsed)
+  }
+}
+
+const setCreationStepStatus = (key: CreationStepKey, status: CreationStepStatus) => {
+  const step = creationSteps.find((item) => item.key === key)
+  if (step) {
+    step.status = status
+  }
+}
+
+const resetCreationFlow = () => {
+  creationFlow.errorMessage = ''
+  creationSteps.forEach((step) => {
+    step.status = 'pending'
+  })
+}
+
+const runCreationStep = async <T>(key: CreationStepKey, handler: () => Promise<T>): Promise<T> => {
+  setCreationStepStatus(key, 'in_progress')
+  const startedAt = Date.now()
+  try {
+    const result = await handler()
+    await ensureMinStepDuration(startedAt)
+    setCreationStepStatus(key, 'success')
+    return result
+  } catch (error) {
+    await ensureMinStepDuration(startedAt)
+    setCreationStepStatus(key, 'error')
+    throw error
+  }
+}
 
 const form = reactive({
   nomeProduct: '',
@@ -93,6 +174,8 @@ const form = reactive({
   imagemurlProduct: '',
   categoriaProduct: '',
   ativo: true,
+  initialStock: 0,
+  priceAmount: '',
 })
 
 const formErrors = reactive({
@@ -101,6 +184,8 @@ const formErrors = reactive({
   descricaoProduct: '',
   imagemurlProduct: '',
   categoriaProduct: '',
+  initialStock: '',
+  priceAmount: '',
 })
 
 const filteredList = computed(() => filteredProducts.value)
@@ -118,18 +203,39 @@ const resetForm = () => {
   form.imagemurlProduct = ''
   form.categoriaProduct = ''
   form.ativo = true
+  form.initialStock = 0
+  form.priceAmount = ''
   Object.keys(formErrors).forEach((key) => {
     formErrors[key as keyof typeof formErrors] = ''
   })
+  editingProductId.value = null
 }
 
 const openCreateSheet = () => {
   resetForm()
+  sheetMode.value = 'create'
   sheetOpen.value = true
 }
 
 const closeSheet = () => {
   sheetOpen.value = false
+}
+
+const openEditSheet = (product: ProductEntity) => {
+  sheetMode.value = 'edit'
+  editingProductId.value = product.idProduct
+  form.nomeProduct = product.nomeProduct
+  form.slugProduct = product.slugProduct
+  form.descricaoProduct = product.descricaoProduct
+  form.imagemurlProduct = product.imagemurlProduct
+  form.categoriaProduct = product.categoriaProduct
+  form.ativo = product.ativo
+  form.initialStock = 0
+  form.priceAmount = ''
+  Object.keys(formErrors).forEach((key) => {
+    formErrors[key as keyof typeof formErrors] = ''
+  })
+  sheetOpen.value = true
 }
 
 const validateForm = () => {
@@ -139,6 +245,8 @@ const validateForm = () => {
   formErrors.descricaoProduct = ''
   formErrors.imagemurlProduct = ''
   formErrors.categoriaProduct = ''
+  formErrors.initialStock = ''
+  formErrors.priceAmount = ''
   form.imagemurlProduct = sanitizeUrl(form.imagemurlProduct)
 
   if (!isValidName(form.nomeProduct)) {
@@ -166,20 +274,134 @@ const validateForm = () => {
     valid = false
   }
 
+  if (sheetMode.value === 'create') {
+    if (!Number.isInteger(form.initialStock) || form.initialStock < 0) {
+      formErrors.initialStock = 'Informe um estoque inicial válido.'
+      valid = false
+    }
+
+    if (toCurrencyCents(form.priceAmount) <= 0) {
+      formErrors.priceAmount = 'Informe um preço inicial válido.'
+      valid = false
+    }
+  }
+
   return valid
 }
 
-const handleCreateProduct = async () => {
-  if (!validateForm()) return
+const runCreationPipeline = async () => {
+  const priceCents = toCurrencyCents(form.priceAmount)
+  creationFlowRunning.value = true
+  resetCreationFlow()
+  creationFlow.open = true
 
-  const created = await productMutations.createProduct({
-    ...form,
-  })
+  try {
+    const createdProduct = await runCreationStep('product', async () => {
+      const created = await productMutations.createProduct({
+        nomeProduct: form.nomeProduct,
+        slugProduct: form.slugProduct,
+        descricaoProduct: form.descricaoProduct,
+        imagemurlProduct: form.imagemurlProduct,
+        categoriaProduct: form.categoriaProduct,
+        ativo: form.ativo,
+        initialStock: form.initialStock,
+      })
+      if (!created) {
+        throw new Error(productMutations.error.value?.message || 'Não foi possível criar o produto.')
+      }
+      return created
+    })
 
-  if (created) {
-    toast({ title: 'Produto criado', description: `${created.nomeProduct} adicionado com sucesso.` })
+    await runCreationStep('inventory', async () => {
+      const ensured = await inventoryMutations.ensureInventory(createdProduct.idProduct, form.initialStock)
+      if (!ensured) {
+        throw new Error(inventoryMutations.error.value?.message || 'Não foi possível configurar o estoque.')
+      }
+      return ensured
+    })
+
+    await runCreationStep('price', async () => {
+      const createdPrice = await priceMutations.createPrice({
+        productId: createdProduct.idProduct,
+        amountPrice: priceCents,
+        currencyPrice: 'BRL',
+        vigentePrice: true,
+      })
+      if (!createdPrice) {
+        throw new Error(priceMutations.error.value?.message || 'Não foi possível registrar o preço.')
+      }
+      return createdPrice
+    })
+
+    await runCreationStep('done', async () => Promise.resolve(true))
+
+    toast({
+      title: 'Produto pronto para venda',
+      description: `${createdProduct.nomeProduct} já está com estoque e preço configurados.`,
+    })
     closeSheet()
     await fetchProducts()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Não foi possível concluir a configuração.'
+    creationFlow.errorMessage = message
+    toast({
+      variant: 'destructive',
+      title: 'Pipeline interrompido',
+      description: message,
+    })
+  } finally {
+    await sleep(600)
+    creationFlow.open = false
+    creationFlowRunning.value = false
+    resetCreationFlow()
+  }
+}
+
+const handleSubmitProduct = async () => {
+  if (!validateForm()) return
+
+  if (sheetMode.value === 'create') {
+    await runCreationPipeline()
+    return
+  }
+
+  if (editingProductId.value) {
+    const updated = await productMutations.updateProduct(editingProductId.value, {
+      nomeProduct: form.nomeProduct,
+      slugProduct: form.slugProduct,
+      descricaoProduct: form.descricaoProduct,
+      imagemurlProduct: form.imagemurlProduct,
+      categoriaProduct: form.categoriaProduct,
+      ativo: form.ativo,
+    })
+
+    if (updated) {
+      toast({ title: 'Produto atualizado', description: `${updated.nomeProduct} foi atualizado.` })
+      closeSheet()
+      await fetchProducts()
+    }
+  }
+}
+
+const handleDeleteProduct = async (product: ProductEntity) => {
+  if (!product?.idProduct) return
+  deletingProductId.value = product.idProduct
+  const deleted = await productMutations.deleteProduct(product.idProduct)
+  deletingProductId.value = null
+
+  if (deleted !== null) {
+    toast({
+      title: 'Produto removido',
+      description: `${product.nomeProduct} e seu inventário foram excluídos.`,
+    })
+    deletePopoverOpen.value = null
+    await fetchProducts()
+  } else {
+    toast({
+      variant: 'destructive',
+      title: 'Não foi possível excluir',
+      description: productMutations.error.value?.message || 'Verifique vínculos com pedidos antes de excluir.',
+    })
   }
 }
 
@@ -199,6 +421,21 @@ const generateSlug = () => {
   form.slugProduct = toSlug(form.nomeProduct)
 }
 
+const handlePriceInput = (event: Event) => {
+  const target = event.target as HTMLInputElement | null
+  if (!target) return
+  const digits = target.value.replace(/\D/g, '')
+  if (!digits) {
+    form.priceAmount = ''
+    target.value = ''
+    return
+  }
+  const cents = Number.parseInt(digits, 10)
+  const formatted = (cents / 100).toFixed(2).replace('.', ',')
+  form.priceAmount = formatted
+  target.value = formatted
+}
+
 watch([searchTerm, statusFilter, categoryFilter], ([search, status, category]) => {
   setFilters({
     search: search || undefined,
@@ -210,6 +447,7 @@ watch([searchTerm, statusFilter, categoryFilter], ([search, status, category]) =
 watch(sheetOpen, (isOpen) => {
   if (!isOpen) {
     resetForm()
+    sheetMode.value = 'create'
   }
 })
 
@@ -225,7 +463,7 @@ onMounted(() => {
       <div>
         <h1 class="text-2xl font-semibold">Produtos</h1>
         <p class="text-sm text-muted-foreground">
-          Cadastre e gerencie itens do catálogo.
+          Cadastre e gerencie itens do catálogo. Use o ícone de moeda na tabela para ajustar preços rapidamente.
         </p>
       </div>
       <Button type="button" @click="openCreateSheet">
@@ -234,55 +472,61 @@ onMounted(() => {
       </Button>
     </div>
 
-    <div class="rounded-2xl border bg-card p-4 shadow-sm">
-      <div class="grid gap-3 lg:grid-cols-[2fr,1fr,1fr]">
-        <InputGroup class="h-12 bg-background">
-          <InputGroupAddon class="gap-2 text-muted-foreground">
-            <Search class="h-4 w-4" />
-            <span class="hidden text-[10px] font-semibold uppercase tracking-[0.4em] text-muted-foreground/70 md:inline-flex">
-              Buscar
-            </span>
-          </InputGroupAddon>
-          <InputGroupInput
-            v-model="searchTerm"
-            type="text"
-            placeholder="Nome, slug ou palavra-chave"
-            class="h-12"
-          />
-        </InputGroup>
-        <InputGroup class="h-12 bg-background">
-          <InputGroupAddon class="text-muted-foreground">
-            <SlidersHorizontal class="h-4 w-4" />
-          </InputGroupAddon>
-          <select
-            v-model="statusFilter"
-            class="h-full flex-1 appearance-none bg-transparent pl-2 pr-8 text-sm font-medium text-foreground outline-none"
-            aria-label="Filtrar por status"
-          >
-            <option value="all">Todos os status</option>
-            <option value="active">Somente ativos</option>
-            <option value="inactive">Somente inativos</option>
-          </select>
-        </InputGroup>
-        <InputGroup class="h-12 bg-background">
-          <InputGroupAddon class="text-muted-foreground">
-            <Package class="h-4 w-4" />
-          </InputGroupAddon>
-          <select
-            v-model="categoryFilter"
-            class="h-full flex-1 appearance-none bg-transparent pl-2 pr-8 text-sm font-medium text-foreground outline-none"
-            aria-label="Filtrar por categoria"
-          >
-            <option value="all">Todas as categorias</option>
-            <option
-              v-for="category in availableCategories"
-              :key="category"
-              :value="category"
+    <div class="flex flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm">
+      <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <div class="space-y-1.5">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Busca rápida</p>
+          <InputGroup class="h-12 bg-background">
+            <InputGroupAddon class="gap-2 text-muted-foreground">
+              <Search class="h-4 w-4" />
+            </InputGroupAddon>
+            <InputGroupInput
+              v-model="searchTerm"
+              type="text"
+              placeholder="Nome, slug ou palavra-chave"
+              class="h-12"
+            />
+          </InputGroup>
+        </div>
+        <div class="space-y-1.5">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Status</p>
+          <InputGroup class="h-12 bg-background">
+            <InputGroupAddon class="text-muted-foreground">
+              <SlidersHorizontal class="h-4 w-4" />
+            </InputGroupAddon>
+            <select
+              v-model="statusFilter"
+              class="h-full flex-1 appearance-none bg-transparent pl-2 pr-8 text-sm font-medium text-foreground outline-none"
+              aria-label="Filtrar por status"
             >
-              {{ category }}
-            </option>
-          </select>
-        </InputGroup>
+              <option value="all">Todos os status</option>
+              <option value="active">Somente ativos</option>
+              <option value="inactive">Somente inativos</option>
+            </select>
+          </InputGroup>
+        </div>
+        <div class="space-y-1.5">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Categoria</p>
+          <InputGroup class="h-12 bg-background">
+            <InputGroupAddon class="text-muted-foreground">
+              <Package class="h-4 w-4" />
+            </InputGroupAddon>
+            <select
+              v-model="categoryFilter"
+              class="h-full flex-1 appearance-none bg-transparent pl-2 pr-8 text-sm font-medium text-foreground outline-none"
+              aria-label="Filtrar por categoria"
+            >
+              <option value="all">Todas as categorias</option>
+              <option
+                v-for="category in availableCategories"
+                :key="category"
+                :value="category"
+              >
+                {{ category }}
+              </option>
+            </select>
+          </InputGroup>
+        </div>
       </div>
 
       <Table class="mt-4">
@@ -351,14 +595,12 @@ onMounted(() => {
                   <Button variant="ghost" size="icon-sm" @click="handleToggleStatus(product.idProduct, product.ativo)">
                     <component :is="product.ativo ? ToggleLeft : ToggleRight" class="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon-sm" as-child>
-                    <NuxtLink :to="`/sistema/produtos/${product.idProduct}`">
-                      <Pencil class="h-4 w-4" />
-                    </NuxtLink>
+                  <Button variant="ghost" size="icon-sm" @click="openEditSheet(product)">
+                    <Pencil class="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon-sm" as-child>
+                  <Button variant="ghost" size="icon-sm" as-child :title="'Gerenciar preços'">
                     <NuxtLink :to="`/sistema/produtos/${product.idProduct}/precos`">
-                      <Eye class="h-4 w-4" />
+                      <CircleDollarSign class="h-4 w-4" />
                     </NuxtLink>
                   </Button>
                   <Button variant="ghost" size="icon-sm" as-child>
@@ -366,6 +608,49 @@ onMounted(() => {
                       <Package class="h-4 w-4" />
                     </NuxtLink>
                   </Button>
+                  <Popover
+                    :open="deletePopoverOpen === product.idProduct"
+                    @update:open="(value) => { deletePopoverOpen = value ? product.idProduct : null }"
+                  >
+                    <PopoverTrigger as-child>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        class="text-destructive"
+                        @click.stop
+                      >
+                        <Trash2 class="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" class="w-64 space-y-3">
+                      <div class="flex items-center gap-2 text-sm font-semibold text-destructive">
+                        <AlertTriangle class="h-4 w-4" />
+                        Remover {{ product.nomeProduct }}?
+                      </div>
+                      <p class="text-xs text-muted-foreground">
+                        Só é possível excluir itens sem pedidos vinculados. O inventário será removido junto com o produto.
+                      </p>
+                      <div class="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          class="flex-1"
+                          @click="deletePopoverOpen = null"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          class="flex-1"
+                          :disabled="productMutations.loading.value && deletingProductId === product.idProduct"
+                          @click="handleDeleteProduct(product)"
+                        >
+                          {{ deletingProductId === product.idProduct ? 'Excluindo...' : 'Excluir' }}
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </TableCell>
             </TableRow>
@@ -385,9 +670,15 @@ onMounted(() => {
     <Sheet v-model:open="sheetOpen">
       <SheetContent class="w-full overflow-y-auto sm:max-w-xl">
         <SheetHeader>
-          <SheetTitle class="text-2xl font-semibold">Novo produto</SheetTitle>
+          <SheetTitle class="text-2xl font-semibold">
+            {{ sheetMode === 'create' ? 'Novo produto' : 'Editar produto' }}
+          </SheetTitle>
           <SheetDescription>
-            Preencha os campos abaixo para disponibilizar o item no catálogo interno.
+            {{
+              sheetMode === 'create'
+                ? 'Preencha os campos abaixo para disponibilizar o item no catálogo interno.'
+                : 'Atualize informações do item sem precisar sair da listagem.'
+            }}
           </SheetDescription>
         </SheetHeader>
 
@@ -561,6 +852,67 @@ onMounted(() => {
                 </FieldError>
               </FieldContent>
             </Field>
+
+            <Field v-if="sheetMode === 'create'">
+              <FieldLabel>
+                <Warehouse class="h-4 w-4 text-[#a4f380]" />
+                Estoque inicial
+              </FieldLabel>
+              <FieldContent>
+                <InputGroup
+                  class="h-12"
+                  :class="formErrors.initialStock ? 'border-destructive ring-destructive/20' : ''"
+                >
+                  <InputGroupAddon class="text-muted-foreground">
+                    <Warehouse class="h-4 w-4" />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    id="initial-stock"
+                    v-model.number="form.initialStock"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    :aria-invalid="Boolean(formErrors.initialStock)"
+                  />
+                </InputGroup>
+                <FieldDescription>Valor usado para criar o inventário inicial do produto.</FieldDescription>
+                <FieldError v-if="formErrors.initialStock">
+                  {{ formErrors.initialStock }}
+                </FieldError>
+              </FieldContent>
+            </Field>
+
+            <Field v-if="sheetMode === 'create'">
+              <FieldLabel>
+                <CircleDollarSign class="h-4 w-4 text-[#80d3e4]" />
+                Preço vigente
+              </FieldLabel>
+              <FieldContent>
+                <InputGroup
+                  class="h-12"
+                  :class="formErrors.priceAmount ? 'border-destructive ring-destructive/20' : ''"
+                >
+                  <InputGroupAddon class="text-muted-foreground font-semibold">
+                    BRL
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    id="initial-price"
+                    v-model="form.priceAmount"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="199,90"
+                    :aria-invalid="Boolean(formErrors.priceAmount)"
+                    @input="handlePriceInput"
+                    class="h-12"
+                  />
+                </InputGroup>
+                <FieldDescription>Será aplicado automaticamente como preço vigente após o cadastro.</FieldDescription>
+                <FieldError v-if="formErrors.priceAmount">
+                  {{ formErrors.priceAmount }}
+                </FieldError>
+              </FieldContent>
+            </Field>
           </FieldSet>
 
           <div class="rounded-2xl border border-dashed bg-muted/40 p-4">
@@ -590,21 +942,87 @@ onMounted(() => {
 
         <SheetFooter class="mt-6">
           <SheetClose as-child>
-            <Button type="button" variant="ghost">
+            <Button type="button" variant="ghost" :disabled="creationFlowRunning">
               Cancelar
             </Button>
           </SheetClose>
           <Button
             type="button"
             class="gap-2"
-            :disabled="productMutations.loading.value"
-            @click="handleCreateProduct"
+            :disabled="productMutations.loading.value || creationFlowRunning"
+            @click="handleSubmitProduct"
           >
             <Sparkles class="h-4 w-4" />
-            {{ productMutations.loading.value ? 'Salvando...' : 'Salvar produto' }}
+            {{
+              productMutations.loading.value || creationFlowRunning
+                ? 'Processando...'
+                : sheetMode === 'create'
+                  ? 'Salvar e configurar'
+                  : 'Atualizar produto'
+            }}
           </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>
+    <Teleport to="body">
+      <div
+        v-if="creationFlow.open"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 px-4 backdrop-blur-sm"
+        aria-live="polite"
+      >
+        <div class="w-full max-w-md rounded-3xl border bg-card p-6 shadow-2xl">
+          <div class="mb-5 flex items-center gap-3">
+            <Sparkles class="h-5 w-5 text-[#a4f380]" />
+            <div>
+              <p class="text-lg font-semibold">Configurando produto</p>
+              <p class="text-sm text-muted-foreground">Segure um instante, estamos finalizando as etapas.</p>
+            </div>
+          </div>
+          <div class="space-y-3">
+            <div
+              v-for="step in creationSteps"
+              :key="step.key"
+              class="flex items-center gap-3 rounded-2xl border px-3 py-2"
+              :class="step.status === 'success'
+                ? 'border-emerald-200 bg-emerald-50/60'
+                : step.status === 'error'
+                  ? 'border-destructive/50 bg-destructive/5'
+                  : 'border-border bg-background/40'"
+            >
+              <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-muted">
+                <component :is="step.icon" class="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div class="flex flex-1 items-center justify-between gap-3">
+                <div>
+                  <p class="text-sm font-semibold">{{ step.label }}</p>
+                  <p class="text-xs text-muted-foreground">{{ creationStepStatusCopy[step.status] }}</p>
+                </div>
+                <div class="flex items-center justify-center">
+                  <Loader2
+                    v-if="step.status === 'in_progress'"
+                    class="h-4 w-4 animate-spin text-muted-foreground"
+                  />
+                  <CheckCircle2
+                    v-else-if="step.status === 'success'"
+                    class="h-4 w-4 text-emerald-500"
+                  />
+                  <XCircle
+                    v-else-if="step.status === 'error'"
+                    class="h-4 w-4 text-destructive"
+                  />
+                  <span v-else class="text-xs font-semibold text-muted-foreground/60">•••</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p
+            v-if="creationFlow.errorMessage"
+            class="mt-4 text-center text-sm font-medium text-destructive"
+          >
+            {{ creationFlow.errorMessage }}
+          </p>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

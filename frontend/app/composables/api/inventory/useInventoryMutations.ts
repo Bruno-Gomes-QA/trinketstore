@@ -58,6 +58,14 @@ export const useInventoryMutations = () => {
     )
   }
 
+  const ensureInventory = async (productId: number, qtyOnHand = 0) => {
+    return await handleRequest(
+      useBackendFetchDirect<InventoryEntity>(`/inventory/product/${productId}/ensure?qtyOnHand=${qtyOnHand}`, {
+        method: 'POST',
+      }),
+    )
+  }
+
   return {
     loading: readonly(loading),
     error: readonly(error),
@@ -65,5 +73,6 @@ export const useInventoryMutations = () => {
     updateInventory,
     addStock,
     removeStock,
+    ensureInventory,
   }
 }

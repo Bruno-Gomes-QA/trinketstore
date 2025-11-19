@@ -76,6 +76,17 @@ public class InventoryController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/product/{productId}/ensure")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearer-jwt")
+    @Operation(summary = "Garantir inventário para produto (Admin)", description = "Cria o inventário se não existir e retorna o registro atual")
+    public ResponseEntity<InventoryResponse> ensureInventoryByProduct(
+            @PathVariable Integer productId,
+            @RequestParam(name = "qtyOnHand", required = false) Integer qtyOnHand) {
+        InventoryResponse response = inventoryService.ensureInventoryRecord(productId, qtyOnHand);
+        return ResponseEntity.ok(response);
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearer-jwt")
@@ -118,4 +129,3 @@ public class InventoryController {
         return ResponseEntity.noContent().build();
     }
 }
-

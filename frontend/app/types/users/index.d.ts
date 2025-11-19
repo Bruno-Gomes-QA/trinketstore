@@ -15,6 +15,8 @@ export type UserResponse = UserEntity
 export interface UserListFilters {
   search?: string
   role?: UserRole | 'all'
+  emailStatus?: 'all' | 'with' | 'without'
+  recency?: 'all' | '7' | '30'
 }
 
 export interface CreateUserPayload {

@@ -27,7 +27,7 @@ export const useOrdersList = () => {
 
   const filteredOrders = computed(() => {
     return orders.value.filter((order) => {
-      const { status, checkoutId, paymentIntent, userId } = filtersState.value
+      const { status, checkoutId, paymentIntent, userId, search } = filtersState.value
 
       const matchesStatus = status && status !== 'all'
         ? order.statusOrder === status
@@ -45,9 +45,25 @@ export const useOrdersList = () => {
         ? order.userId === userId
         : true
 
-      return matchesStatus && matchesCheckout && matchesPayment && matchesUser
+      const matchesSearch = search && search.trim()
+        ? (() => {
+            const term = search.trim().toLowerCase()
+            return (
+              `${order.idOrder}`.includes(term)
+              || order.userName?.toLowerCase().includes(term)
+              || order.checkoutId.toLowerCase().includes(term)
+              || order.paymentIntent.toLowerCase().includes(term)
+            )
+          })()
+        : true
+
+      return matchesStatus && matchesCheckout && matchesPayment && matchesUser && matchesSearch
     })
   })
+
+  const setFilters = (filters: OrderFilters) => {
+    filtersState.value = filters
+  }
 
   return {
     orders: readonly(orders),
@@ -56,5 +72,6 @@ export const useOrdersList = () => {
     error: readonly(error),
     filters: readonly(filtersState),
     fetchOrders,
+    setFilters,
   }
 }

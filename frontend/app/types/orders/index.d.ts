@@ -23,6 +23,7 @@ export interface OrderFilters {
   userId?: number
   paymentIntent?: string
   checkoutId?: string
+  search?: string
 }
 
 export interface CreateOrderPayload {

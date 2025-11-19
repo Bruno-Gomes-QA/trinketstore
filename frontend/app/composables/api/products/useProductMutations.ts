@@ -1,6 +1,6 @@
 import { readonly } from 'vue'
 import type { ApiError } from '~/types/core/api'
-import type { ProductEntity, ProductPayload } from '~/types/products'
+import type { CreateProductPayload, ProductEntity, UpdateProductPayload } from '~/types/products'
 
 export const useProductMutations = () => {
   const loading = useState('products:mutations:loading', () => false)
@@ -20,7 +20,7 @@ export const useProductMutations = () => {
     }
   }
 
-  const createProduct = async (payload: ProductPayload) => {
+  const createProduct = async (payload: CreateProductPayload) => {
     return await handleRequest(
       useBackendFetchDirect<ProductEntity>('/products', {
         method: 'POST',
@@ -29,7 +29,7 @@ export const useProductMutations = () => {
     )
   }
 
-  const updateProduct = async (productId: number, payload: ProductPayload) => {
+  const updateProduct = async (productId: number, payload: UpdateProductPayload) => {
     return await handleRequest(
       useBackendFetchDirect<ProductEntity>(`/products/${productId}`, {
         method: 'PUT',

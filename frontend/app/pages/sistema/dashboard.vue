@@ -31,10 +31,7 @@ definePageMeta({
 const LOW_STOCK_THRESHOLD = 10
 const MAX_LATEST_ORDERS = 5
 
-const { user } = useAuth()
 const { formatDateTime, formatCurrencyFromCents, formatOrderStatus } = useFormatters()
-
-const loggedInAt = ref(new Date().toISOString())
 
 const summaryLoading = ref(true)
 const lowStockLoading = ref(true)
@@ -220,7 +217,7 @@ onMounted(refreshDashboard)
               >
                 <TableCell>
                   <div class="font-semibold">
-                    {{ item.productName || `Produto #${item.productId}` }}
+                    {{ item.nomeProduct || `Produto #${item.productId}` }}
                   </div>
                   <p class="text-xs text-muted-foreground">
                     {{ item.categoriaProduct || 'Sem categoria' }}
@@ -230,8 +227,15 @@ onMounted(refreshDashboard)
                   {{ item.qtyOnHand }} un
                 </TableCell>
                 <TableCell class="text-right">
-                  <Button variant="outline" size="sm" class="text-xs">
-                    Ajustar estoque
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    class="text-xs"
+                    as-child
+                  >
+                    <NuxtLink :to="`/sistema/produtos/${item.productId}/estoque`">
+                      Ajustar estoque
+                    </NuxtLink>
                   </Button>
                 </TableCell>
               </TableRow>
@@ -320,47 +324,6 @@ onMounted(refreshDashboard)
             </TableEmpty>
           </TableBody>
         </Table>
-      </div>
-    </div>
-
-    <div class="grid gap-4 md:grid-cols-2">
-      <div class="bg-card border rounded-xl p-6 shadow-sm">
-        <h3 class="text-lg font-semibold mb-4">Informações da Conta</h3>
-        <div class="space-y-3">
-          <div>
-            <p class="text-xs text-muted-foreground">ID do Usuário</p>
-            <p class="text-sm font-medium mt-1">{{ user?.usuarioKey || '—' }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-muted-foreground">E-mail</p>
-            <p class="text-sm font-medium mt-1 break-all">{{ user?.email || '—' }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-muted-foreground">Logado em</p>
-            <p class="text-sm font-medium mt-1">{{ formatDateTime(loggedInAt) }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-card border rounded-xl p-6 shadow-sm">
-        <h3 class="text-lg font-semibold mb-4">Ações Rápidas</h3>
-        <div class="grid gap-2">
-          <Button
-            as-child
-            variant="default"
-            class="justify-start bg-gradient-to-r from-[#a4f380] to-[#80d3e4] text-stone-900"
-          >
-            <NuxtLink to="/sistema/produtos">
-              + Adicionar produto
-            </NuxtLink>
-          </Button>
-          <Button as-child variant="outline" class="justify-start">
-            <NuxtLink to="/sistema/pedidos">Ver pedidos pendentes</NuxtLink>
-          </Button>
-          <Button as-child variant="outline" class="justify-start">
-            <NuxtLink to="/sistema/pedidos/criar">Criar pedido manual</NuxtLink>
-          </Button>
-        </div>
       </div>
     </div>
   </div>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Bell, ClipboardList, Plus } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import {
   DropdownMenu,
@@ -48,37 +47,6 @@ const userInitials = computed(() => {
     </div>
 
     <div class="flex items-center gap-2">
-      <Button
-        as-child
-        size="sm"
-        variant="outline"
-        class="hidden md:inline-flex"
-      >
-        <NuxtLink to="/sistema/produtos">
-          <Plus class="h-4 w-4" />
-          Criar produto
-        </NuxtLink>
-      </Button>
-      <Button
-        as-child
-        size="sm"
-        variant="secondary"
-        class="hidden md:inline-flex"
-      >
-        <NuxtLink to="/sistema/pedidos/criar">
-          <ClipboardList class="h-4 w-4" />
-          Novo pedido
-        </NuxtLink>
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        class="text-muted-foreground"
-        aria-label="Notificações"
-      >
-        <Bell class="h-4 w-4" />
-      </Button>
-
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <Button variant="ghost" class="gap-3 px-2">

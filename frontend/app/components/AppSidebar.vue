@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutDashboard, Package, ShoppingCart, Users, Boxes, ClipboardList, UserCircle } from "lucide-vue-next"
+import { LayoutDashboard, Package, ShoppingCart, Users, Boxes } from "lucide-vue-next"
 import type { SidebarProps } from '~/components/ui/sidebar'
 import { useAuth } from '~/composables/api/useAuth'
 import NavMain from '~/components/NavMain.vue'
@@ -22,12 +22,10 @@ const showIconFallback = ref(false)
 
 const navItems = [
   { title: 'Dashboard', url: '/sistema/dashboard', icon: LayoutDashboard },
-  { title: 'Perfil', url: '/sistema/perfil', icon: UserCircle },
   { title: 'Usuários', url: '/sistema/usuarios', icon: Users },
   { title: 'Produtos', url: '/sistema/produtos', icon: Package },
   { title: 'Inventário', url: '/sistema/inventario', icon: Boxes },
   { title: 'Pedidos', url: '/sistema/pedidos', icon: ShoppingCart },
-  { title: 'Criar Pedido', url: '/sistema/pedidos/criar', icon: ClipboardList },
 ]
 
 const userData = computed(() => ({
@@ -44,7 +42,7 @@ const userData = computed(() => ({
         <!-- Logo quando sidebar está aberta -->
         <img
           v-if="!showLogoFallback"
-          src="/logo_simple.png"
+          src="/logo_full.png"
           alt="Trinket Store"
           class="h-10 w-auto object-contain group-data-[collapsible=icon]:hidden"
           @error="showLogoFallback = true"

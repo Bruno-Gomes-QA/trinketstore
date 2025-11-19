@@ -23,6 +23,12 @@ export interface ProductPayload {
   ativo: boolean
 }
 
+export interface CreateProductPayload extends ProductPayload {
+  initialStock: number
+}
+
+export type UpdateProductPayload = ProductPayload
+
 export interface ProductListFilters {
   search?: string
   category?: string

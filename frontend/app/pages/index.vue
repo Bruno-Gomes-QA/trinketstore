@@ -5,6 +5,7 @@
     <main class="flex-1">
       <StoreBanners @show-onboarding="showOnboarding" />
       <ProductShowcase />
+      <StoreProductCatalog />
       
     </main>
     <StoreFooter />

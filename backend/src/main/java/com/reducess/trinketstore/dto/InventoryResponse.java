@@ -12,5 +12,9 @@ public class InventoryResponse {
     private Integer idInventory;
     private Integer productId;
     private Integer qtyOnHand;
+    private String nomeProduct;
+    private String slugProduct;
+    private String categoriaProduct;
+    private Boolean ativoProduct;
+    private String imagemurlProduct;
 }
-

@@ -34,6 +34,8 @@ export default defineNuxtConfig({
     //(client-side) NUXT_PUBLIC_BACKEND_URL
     public: {
       backendUrl: `${process.env.NUXT_PUBLIC_BACKEND_URL}`,
+      supabaseUrl: `${process.env.NUXT_PUBLIC_SUPABASE_URL || ''}`,
+      supabaseAnonKey: `${process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY || ''}`,
     },
   },
 })

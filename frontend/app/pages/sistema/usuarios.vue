@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { Eye, LockKeyhole, Mail, Pencil, Plus, Search, ShieldCheck, Trash2, UserRound } from 'lucide-vue-next'
+import { CalendarRange, Eye, LockKeyhole, Mail, Pencil, Plus, Search, ShieldCheck, Trash2, UserRound } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import {
   InputGroup,
@@ -66,6 +66,8 @@ const userMutations = useUserMutations()
 
 const searchTerm = ref('')
 const roleFilter = ref<'all' | 'admin' | 'customer'>('all')
+const emailFilter = ref<'all' | 'with' | 'without'>('all')
+const recencyFilter = ref<'all' | '7' | '30'>('all')
 const sheetOpen = ref(false)
 const sheetMode = ref<'create' | 'edit' | 'view'>('create')
 const sheetLoading = ref(false)
@@ -223,10 +225,12 @@ const handleDelete = async () => {
   await fetchUsers()
 }
 
-watch([searchTerm, roleFilter], ([search, role]) => {
+watch([searchTerm, roleFilter, emailFilter, recencyFilter], ([search, role, emailStatus, recency]) => {
   setFilters({
     search: search || undefined,
     role,
+    emailStatus,
+    recency,
   })
 })
 
@@ -244,7 +248,12 @@ watch(deleteDrawerOpen, (isOpen) => {
 })
 
 onMounted(() => {
-  setFilters({ search: '', role: 'all' })
+  setFilters({
+    search: '',
+    role: 'all',
+    emailStatus: 'all',
+    recency: 'all',
+  })
   fetchUsers()
 })
 </script>
@@ -265,35 +274,72 @@ onMounted(() => {
     </div>
 
     <div class="flex flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm">
-      <div class="grid gap-3 md:grid-cols-[2fr,1fr]">
-        <InputGroup class="h-12 bg-background">
-          <InputGroupAddon class="gap-2 text-muted-foreground">
-            <Search class="h-4 w-4" />
-            <span class="hidden text-[10px] font-semibold uppercase tracking-[0.4em] text-muted-foreground/70 md:inline-flex">
-              Buscar
-            </span>
-          </InputGroupAddon>
-          <InputGroupInput
-            v-model="searchTerm"
-            type="text"
-            placeholder="Nome, email ou ID"
-            class="h-12"
-          />
-        </InputGroup>
-        <InputGroup class="h-12 bg-background">
-          <InputGroupAddon class="text-muted-foreground">
-            <ShieldCheck class="h-4 w-4" />
-          </InputGroupAddon>
-          <select
-            id="role-filter"
-            v-model="roleFilter"
-            class="h-full flex-1 appearance-none bg-transparent pl-2 pr-8 text-sm font-medium text-foreground outline-none"
-          >
-            <option value="all">Todos os perfis</option>
-            <option value="admin">Administradores</option>
-            <option value="customer">Clientes</option>
-          </select>
-        </InputGroup>
+      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div class="space-y-1.5">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Busca rápida</p>
+          <InputGroup class="h-12 bg-background">
+            <InputGroupAddon class="gap-2 text-muted-foreground">
+              <Search class="h-4 w-4" />
+            </InputGroupAddon>
+            <InputGroupInput
+              v-model="searchTerm"
+              type="text"
+              placeholder="Filtrar por nome ou e-mail"
+              class="h-12"
+            />
+          </InputGroup>
+        </div>
+        <div class="space-y-1.5">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Perfil</p>
+          <InputGroup class="h-12 bg-background">
+            <InputGroupAddon class="text-muted-foreground">
+              <ShieldCheck class="h-4 w-4" />
+            </InputGroupAddon>
+            <select
+              id="role-filter"
+              v-model="roleFilter"
+              class="h-full flex-1 appearance-none bg-transparent pl-2 pr-8 text-sm font-medium text-foreground outline-none"
+            >
+              <option value="all">Todos os perfis</option>
+              <option value="admin">Administradores</option>
+              <option value="customer">Clientes</option>
+            </select>
+          </InputGroup>
+        </div>
+        <div class="space-y-1.5">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Email cadastrado</p>
+          <InputGroup class="h-12 bg-background">
+            <InputGroupAddon class="text-muted-foreground">
+              <Mail class="h-4 w-4" />
+            </InputGroupAddon>
+            <select
+              id="email-filter"
+              v-model="emailFilter"
+              class="h-full flex-1 appearance-none bg-transparent pl-2 pr-8 text-sm font-medium text-foreground outline-none"
+            >
+              <option value="all">Todos</option>
+              <option value="with">Somente com e-mail</option>
+              <option value="without">Sem e-mail</option>
+            </select>
+          </InputGroup>
+        </div>
+        <div class="space-y-1.5">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Criados em</p>
+          <InputGroup class="h-12 bg-background">
+            <InputGroupAddon class="text-muted-foreground">
+              <CalendarRange class="h-4 w-4" />
+            </InputGroupAddon>
+            <select
+              id="recency-filter"
+              v-model="recencyFilter"
+              class="h-full flex-1 appearance-none bg-transparent pl-2 pr-8 text-sm font-medium text-foreground outline-none"
+            >
+              <option value="all">Todos os períodos</option>
+              <option value="7">Últimos 7 dias</option>
+              <option value="30">Últimos 30 dias</option>
+            </select>
+          </InputGroup>
+        </div>
       </div>
 
       <Table>
@@ -301,6 +347,7 @@ onMounted(() => {
           <TableRow>
             <TableHead>ID</TableHead>
             <TableHead>Nome</TableHead>
+            <TableHead>Email</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Criado em</TableHead>
             <TableHead>Atualizado em</TableHead>
@@ -311,6 +358,7 @@ onMounted(() => {
           <template v-if="loading">
             <TableRow v-for="index in 5" :key="index">
               <TableCell><Skeleton class="h-5 w-16" /></TableCell>
+              <TableCell><Skeleton class="h-5 w-32" /></TableCell>
               <TableCell><Skeleton class="h-5 w-32" /></TableCell>
               <TableCell><Skeleton class="h-6 w-20" /></TableCell>
               <TableCell><Skeleton class="h-5 w-28" /></TableCell>
@@ -325,6 +373,9 @@ onMounted(() => {
             >
               <TableCell class="font-semibold">#{{ item.idUser }}</TableCell>
               <TableCell>{{ item.nomeUser }}</TableCell>
+              <TableCell>
+                <span class="text-sm text-muted-foreground">{{ item.email || '—' }}</span>
+              </TableCell>
               <TableCell>
                 <span
                   class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold capitalize"
@@ -352,7 +403,7 @@ onMounted(() => {
               </TableCell>
             </TableRow>
           </template>
-          <TableEmpty v-else :colspan="6">
+          <TableEmpty v-else :colspan="7">
             <Empty>
               <EmptyHeader>
                 <EmptyTitle>Nenhum usuário encontrado</EmptyTitle>
@@ -470,7 +521,7 @@ onMounted(() => {
                 </FieldContent>
               </Field>
 
-              <Field v-if="sheetMode === 'create'">
+              <Field v-if="sheetMode !== 'view'">
                 <FieldLabel>
                   <Mail class="h-4 w-4 text-[#5dc5db]" />
                   E-mail de acesso
@@ -483,17 +534,23 @@ onMounted(() => {
                     <InputGroupAddon class="text-muted-foreground">
                       <Mail class="h-4 w-4" />
                     </InputGroupAddon>
-                    <InputGroupInput
-                      id="user-email"
-                      v-model="form.email"
-                      type="email"
-                      placeholder="admin@trinketstore.com"
-                      :disabled="userMutations.loading.value"
-                      :aria-invalid="Boolean(formErrors.email)"
-                      class="h-12"
-                    />
-                  </InputGroup>
-                  <FieldDescription>Usado para login e confirmações importantes.</FieldDescription>
+                  <InputGroupInput
+                    id="user-email"
+                    v-model="form.email"
+                    type="email"
+                    placeholder="admin@trinketstore.com"
+                    :disabled="sheetMode !== 'create' || userMutations.loading.value"
+                    :aria-invalid="Boolean(formErrors.email)"
+                    class="h-12"
+                  />
+                </InputGroup>
+                  <FieldDescription>
+                    {{
+                      sheetMode === 'create'
+                        ? 'Usado para login e confirmações importantes.'
+                        : 'O e-mail é definido no cadastro inicial e não pode ser alterado.'
+                    }}
+                  </FieldDescription>
                   <FieldError v-if="formErrors.email">
                     {{ formErrors.email }}
                   </FieldError>

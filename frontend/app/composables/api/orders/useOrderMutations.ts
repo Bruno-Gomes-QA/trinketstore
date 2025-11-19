@@ -38,10 +38,19 @@ export const useOrderMutations = () => {
     )
   }
 
+  const deleteOrder = async (orderId: number) => {
+    return await handleRequest(
+      useBackendFetchDirect<void>(`/orders/${orderId}`, {
+        method: 'DELETE',
+      }),
+    )
+  }
+
   return {
     loading: readonly(loading),
     error: readonly(error),
     createOrder,
     updateOrderStatus,
+    deleteOrder,
   }
 }

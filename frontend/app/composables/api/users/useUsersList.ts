@@ -36,16 +36,35 @@ export const useUsersList = () => {
   }
 
   const filteredUsers = computed(() => {
+    const now = Date.now()
     return users.value.filter((user) => {
-      const { search, role } = filtersState.value
-      const matchesSearch = search
-        ? user.nomeUser.toLowerCase().includes(search.toLowerCase())
+      const { search, role, emailStatus, recency } = filtersState.value
+      const normalizedSearch = search?.toLowerCase()
+      const matchesSearch = normalizedSearch
+        ? user.nomeUser.toLowerCase().includes(normalizedSearch)
+          || user.email?.toLowerCase().includes(normalizedSearch)
         : true
       const matchesRole = role && role !== 'all'
         ? user.role === role
         : true
+      const matchesEmailStatus = emailStatus
+        ? emailStatus === 'with'
+          ? Boolean(user.email)
+          : emailStatus === 'without'
+            ? !user.email
+            : true
+        : true
+      const matchesRecency = (() => {
+        if (!recency || recency === 'all') return true
+        const createdAt = new Date(user.createdAt).getTime()
+        if (Number.isNaN(createdAt)) return true
+        const diffDays = (now - createdAt) / (1000 * 60 * 60 * 24)
+        if (recency === '7') return diffDays <= 7
+        if (recency === '30') return diffDays <= 30
+        return true
+      })()
 
-      return matchesSearch && matchesRole
+      return matchesSearch && matchesRole && matchesEmailStatus && matchesRecency
     })
   })
 

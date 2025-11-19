@@ -4,6 +4,7 @@ import com.reducess.trinketstore.dto.CreateProductRequest;
 import com.reducess.trinketstore.dto.ProductResponse;
 import com.reducess.trinketstore.dto.UpdateProductRequest;
 import com.reducess.trinketstore.entity.Product;
+import com.reducess.trinketstore.repository.OrderItemRepository;
 import com.reducess.trinketstore.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,8 @@ import java.util.stream.Collectors;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final InventoryService inventoryService;
+    private final OrderItemRepository orderItemRepository;
 
     @Transactional
     public ProductResponse createProduct(CreateProductRequest request) {
@@ -34,6 +37,14 @@ public class ProductService {
         product.setAtivo(request.getAtivo());
 
         Product savedProduct = productRepository.save(product);
+
+        Integer initialStock = request.getInitialStock();
+        if (initialStock == null || initialStock < 0) {
+            initialStock = 0;
+        }
+
+        inventoryService.ensureInventoryRecord(savedProduct.getIdProduct(), initialStock);
+
         return mapToProductResponse(savedProduct);
     }
 
@@ -120,6 +131,12 @@ public class ProductService {
     public void deleteProduct(Integer id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+
+        if (orderItemRepository.existsByProductId(id)) {
+            throw new RuntimeException("Produto vinculado a pedidos não pode ser excluído");
+        }
+
+        inventoryService.deleteInventoryByProductId(id);
         productRepository.delete(product);
     }
 
@@ -154,4 +171,3 @@ public class ProductService {
         );
     }
 }
-

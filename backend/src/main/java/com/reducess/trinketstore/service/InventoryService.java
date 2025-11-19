@@ -4,6 +4,8 @@ import com.reducess.trinketstore.dto.CreateInventoryRequest;
 import com.reducess.trinketstore.dto.InventoryResponse;
 import com.reducess.trinketstore.dto.UpdateInventoryRequest;
 import com.reducess.trinketstore.entity.Inventory;
+import com.reducess.trinketstore.exception.InventoryConflictException;
+import com.reducess.trinketstore.exception.InventoryNotFoundException;
 import com.reducess.trinketstore.repository.InventoryRepository;
 import com.reducess.trinketstore.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,14 +24,17 @@ public class InventoryService {
 
     @Transactional
     public InventoryResponse createInventory(CreateInventoryRequest request) {
+        if (request.getQtyOnHand() == null || request.getQtyOnHand() < 0) {
+            throw new InventoryConflictException("Quantidade inicial inválida");
+        }
         // Verifica se o produto existe
         if (!productRepository.existsById(request.getProductId())) {
-            throw new RuntimeException("Produto não encontrado");
+            throw new InventoryNotFoundException("Produto não encontrado");
         }
 
         // Verifica se já existe inventário para este produto
         if (inventoryRepository.existsByProductId(request.getProductId())) {
-            throw new RuntimeException("Já existe inventário para este produto");
+            throw new InventoryConflictException("Já existe inventário para este produto");
         }
 
         Inventory inventory = new Inventory();
@@ -40,17 +45,28 @@ public class InventoryService {
         return mapToInventoryResponse(savedInventory);
     }
 
+    @Transactional
+    public InventoryResponse ensureInventoryRecord(Integer productId, Integer qtyOnHand) {
+        return inventoryRepository.findByProductId(productId)
+                .map(this::mapToInventoryResponse)
+                .orElseGet(() -> {
+                    int sanitizedQty = qtyOnHand != null && qtyOnHand >= 0 ? qtyOnHand : 0;
+                    CreateInventoryRequest request = new CreateInventoryRequest(productId, sanitizedQty);
+                    return createInventory(request);
+                });
+    }
+
     @Transactional(readOnly = true)
     public InventoryResponse getInventoryById(Integer id) {
         Inventory inventory = inventoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inventário não encontrado"));
+                .orElseThrow(() -> new InventoryNotFoundException("Inventário não encontrado"));
         return mapToInventoryResponse(inventory);
     }
 
     @Transactional(readOnly = true)
     public InventoryResponse getInventoryByProductId(Integer productId) {
         Inventory inventory = inventoryRepository.findByProductId(productId)
-                .orElseThrow(() -> new RuntimeException("Inventário não encontrado para este produto"));
+                .orElseThrow(() -> new InventoryNotFoundException("Inventário não encontrado para este produto"));
         return mapToInventoryResponse(inventory);
     }
 
@@ -78,16 +94,16 @@ public class InventoryService {
     @Transactional
     public InventoryResponse updateInventory(Integer id, UpdateInventoryRequest request) {
         Inventory inventory = inventoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inventário não encontrado"));
+                .orElseThrow(() -> new InventoryNotFoundException("Inventário não encontrado"));
 
         // Se está alterando o produto, verifica se o novo produto existe
         if (request.getProductId() != null && !request.getProductId().equals(inventory.getProductId())) {
             if (!productRepository.existsById(request.getProductId())) {
-                throw new RuntimeException("Produto não encontrado");
+                throw new InventoryNotFoundException("Produto não encontrado");
             }
             // Verifica se já existe inventário para o novo produto
             if (inventoryRepository.existsByProductId(request.getProductId())) {
-                throw new RuntimeException("Já existe inventário para este produto");
+                throw new InventoryConflictException("Já existe inventário para este produto");
             }
             inventory.setProductId(request.getProductId());
         }
@@ -103,11 +119,11 @@ public class InventoryService {
     @Transactional
     public InventoryResponse addStock(Integer id, Integer quantity) {
         if (quantity <= 0) {
-            throw new RuntimeException("Quantidade deve ser maior que zero");
+            throw new InventoryConflictException("Quantidade deve ser maior que zero");
         }
 
         Inventory inventory = inventoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inventário não encontrado"));
+                .orElseThrow(() -> new InventoryNotFoundException("Inventário não encontrado"));
 
         inventory.setQtyOnHand(inventory.getQtyOnHand() + quantity);
 
@@ -118,15 +134,15 @@ public class InventoryService {
     @Transactional
     public InventoryResponse removeStock(Integer id, Integer quantity) {
         if (quantity <= 0) {
-            throw new RuntimeException("Quantidade deve ser maior que zero");
+            throw new InventoryConflictException("Quantidade deve ser maior que zero");
         }
 
         Inventory inventory = inventoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inventário não encontrado"));
+                .orElseThrow(() -> new InventoryNotFoundException("Inventário não encontrado"));
 
         int newQuantity = inventory.getQtyOnHand() - quantity;
         if (newQuantity < 0) {
-            throw new RuntimeException("Quantidade insuficiente em estoque");
+            throw new InventoryConflictException("Quantidade insuficiente em estoque");
         }
 
         inventory.setQtyOnHand(newQuantity);
@@ -138,16 +154,30 @@ public class InventoryService {
     @Transactional
     public void deleteInventory(Integer id) {
         Inventory inventory = inventoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inventário não encontrado"));
+                .orElseThrow(() -> new InventoryNotFoundException("Inventário não encontrado"));
         inventoryRepository.delete(inventory);
     }
 
+    @Transactional
+    public void deleteInventoryByProductId(Integer productId) {
+        inventoryRepository.findByProductId(productId)
+                .ifPresent(inventoryRepository::delete);
+    }
+
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
-        return new InventoryResponse(
-                inventory.getIdInventory(),
-                inventory.getProductId(),
-                inventory.getQtyOnHand()
-        );
+        InventoryResponse response = new InventoryResponse();
+        response.setIdInventory(inventory.getIdInventory());
+        response.setProductId(inventory.getProductId());
+        response.setQtyOnHand(inventory.getQtyOnHand());
+
+        productRepository.findById(inventory.getProductId()).ifPresent(product -> {
+            response.setNomeProduct(product.getNomeProduct());
+            response.setSlugProduct(product.getSlugProduct());
+            response.setCategoriaProduct(product.getCategoriaProduct());
+            response.setAtivoProduct(product.getAtivo());
+            response.setImagemurlProduct(product.getImagemurlProduct());
+        });
+
+        return response;
     }
 }
-

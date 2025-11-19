@@ -2,8 +2,11 @@ export interface InventoryEntity {
   idInventory: number
   productId: number
   qtyOnHand: number
-  productName?: string
+  nomeProduct?: string
+  slugProduct?: string
   categoriaProduct?: string
+  imagemurlProduct?: string
+  ativoProduct?: boolean
 }
 
 export type InventoryResponse = InventoryEntity

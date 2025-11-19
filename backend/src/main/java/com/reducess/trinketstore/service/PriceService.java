@@ -26,6 +26,9 @@ public class PriceService {
         price.setCurrencyPrice(request.getCurrencyPrice());
         price.setVigentePrice(request.getVigentePrice());
         Price savedPrice = priceRepository.save(price);
+        if (Boolean.TRUE.equals(savedPrice.getVigentePrice())) {
+            deactivateOtherPrices(savedPrice.getProductId(), savedPrice.getIdPrice());
+        }
         return mapToPriceResponse(savedPrice, product);
     }
     @Transactional(readOnly = true)
@@ -83,6 +86,9 @@ public class PriceService {
             price.setVigentePrice(request.getVigentePrice());
         }
         Price updatedPrice = priceRepository.save(price);
+        if (Boolean.TRUE.equals(updatedPrice.getVigentePrice())) {
+            deactivateOtherPrices(updatedPrice.getProductId(), updatedPrice.getIdPrice());
+        }
         Product product = productRepository.findById(updatedPrice.getProductId()).orElse(null);
         return mapToPriceResponse(updatedPrice, product);
     }
@@ -107,6 +113,7 @@ public class PriceService {
                 .orElseThrow(() -> new RuntimeException("Preço não encontrado"));
         price.setVigentePrice(true);
         Price updatedPrice = priceRepository.save(price);
+        deactivateOtherPrices(updatedPrice.getProductId(), updatedPrice.getIdPrice());
         Product product = productRepository.findById(updatedPrice.getProductId()).orElse(null);
         return mapToPriceResponse(updatedPrice, product);
     }
@@ -119,5 +126,20 @@ public class PriceService {
                 price.getVigentePrice(),
                 product != null ? product.getNomeProduct() : null
         );
+    }
+
+    private void deactivateOtherPrices(Integer productId, Integer exceptionPriceId) {
+        List<Price> activePrices = priceRepository.findByProductIdAndVigentePrice(productId, true);
+        boolean updated = false;
+        for (Price activePrice : activePrices) {
+            if (exceptionPriceId != null && activePrice.getIdPrice().equals(exceptionPriceId)) {
+                continue;
+            }
+            activePrice.setVigentePrice(false);
+            updated = true;
+        }
+        if (updated) {
+            priceRepository.saveAll(activePrices);
+        }
     }
 }
