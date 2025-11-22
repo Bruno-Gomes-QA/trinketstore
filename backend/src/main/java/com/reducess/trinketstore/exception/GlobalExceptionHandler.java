@@ -72,6 +72,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errorResponse);
     }
 
+    @ExceptionHandler(PaymentException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentException(PaymentException ex) {
+        logger.error("Erro na integração de pagamento: {}", ex.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.BAD_GATEWAY.value(),
+                ex.getMessage(),
+                null,
+                OffsetDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorResponse);
+    }
+
     @ExceptionHandler(OrderItemNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleOrderItemNotFoundException(OrderItemNotFoundException ex) {
         logger.error("Item de pedido não encontrado: {}", ex.getMessage());

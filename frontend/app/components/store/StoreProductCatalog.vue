@@ -2,10 +2,9 @@
   <section id="catalogo" class="bg-muted/30 py-12 md:py-16">
     <div class="container mx-auto px-4">
       <div class="mb-10 space-y-3 text-center">
-        <p class="text-xs font-semibold uppercase tracking-[0.35em] text-brand-cyan">Catálogo</p>
-        <h2 class="text-3xl font-bold md:text-4xl text-foreground">Nossos produtos</h2>
+        <p class="text-3xl font-semibold uppercase tracking-[0.35em] text-brand-cyan">Catálogo</p>
         <p class="text-sm text-muted-foreground md:text-base">
-          Veja os itens cadastrados com fotos, descrição e valores atualizados direto do estoque.
+          Sua próxima fofura está aqui, confira nosso estoque atualizado e escolha a sua peça favorita!
         </p>
       </div>
 
@@ -18,18 +17,18 @@
 
       <div
         v-if="loading"
-        class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+        class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
       >
         <div
           v-for="index in 3"
           :key="index"
-          class="rounded-2xl border border-border bg-white p-6 shadow-sm"
+          class="rounded-2xl border border-border bg-white p-4 shadow-sm"
         >
-          <Skeleton class="mb-4 h-48 w-full rounded-2xl" />
+          <Skeleton class="mb-3 h-40 w-full rounded-2xl" />
           <Skeleton class="h-5 w-1/3" />
           <Skeleton class="mt-3 h-6 w-3/4" />
           <Skeleton class="mt-2 h-4 w-full" />
-          <Skeleton class="mt-6 h-7 w-1/2" />
+          <Skeleton class="mt-4 h-7 w-1/2" />
         </div>
       </div>
 
@@ -42,24 +41,24 @@
 
       <div
         v-else
-        class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+        class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
       >
         <article
           v-for="product in products"
           :key="product.id"
-          class="flex h-full flex-col rounded-2xl border border-border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+          class="flex h-full flex-col rounded-2xl border border-border bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
         >
-          <div class="relative mb-5 overflow-hidden rounded-2xl border border-border/60 bg-muted">
+          <div class="relative mb-3 overflow-hidden rounded-2xl border border-border/60 bg-muted">
             <img
               v-if="product.image"
               :src="product.image"
               :alt="`Foto do produto ${product.name}`"
               loading="lazy"
-              class="aspect-square w-full object-cover"
+              class="aspect-square h-64 w-full object-cover"
             >
             <div
               v-else
-              class="flex aspect-square items-center justify-center text-muted-foreground"
+              class="flex aspect-square h-64 items-center justify-center text-muted-foreground"
             >
               <ImageIcon class="h-10 w-10" />
             </div>
@@ -68,21 +67,18 @@
           <div class="space-y-3">
             <div class="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-muted-foreground">
               <span>{{ product.category || 'Coleção' }}</span>
-              <span class="rounded-full bg-brand-cyan/10 px-2 py-0.5 text-[0.65rem] font-semibold tracking-tight text-brand-cyan">
-                Disponível
-              </span>
             </div>
 
             <div>
-              <h3 class="text-xl font-semibold text-foreground">{{ product.name }}</h3>
-              <p class="mt-1 text-sm text-muted-foreground">
+              <h3 class="text-lg font-semibold text-foreground">{{ product.name }}</h3>
+              <p class="mt-1 text-sm text-muted-foreground line-clamp-2">
                 {{ product.description || 'Descrição indisponível no momento.' }}
               </p>
             </div>
           </div>
 
-          <div class="mt-6">
-            <p class="text-2xl font-bold text-foreground">
+          <div class="mt-4">
+            <p class="text-xl font-bold text-foreground">
               {{ formatPrice(product.priceInCents) }}
             </p>
             <p class="text-xs uppercase tracking-[0.3em] text-muted-foreground">Valor unitário</p>
@@ -90,7 +86,7 @@
 
           <button
             type="button"
-            class="mt-6 inline-flex items-center justify-center gap-2 rounded-xl border border-brand-cyan/40 px-4 py-2 text-sm font-semibold text-brand-cyan transition hover:border-brand-cyan hover:bg-brand-cyan/10"
+            class="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-400 px-3 py-2 text-sm font-semibold text-black shadow-md transition hover:bg-emerald-500"
             @click="openAddDialog(product)"
           >
             <ShoppingCart class="h-4 w-4" />
@@ -104,64 +100,52 @@
       <DialogContent v-if="selectedProduct" class="max-w-2xl space-y-6">
         <DialogHeader>
           <DialogTitle>
-            {{ dialogState === 'success' ? 'Produto reservado com sucesso' : 'Adicionar ao carrinho' }}
+            {{ dialogState === 'success' ? 'Produto reservado' : 'Adicionar ao carrinho' }}
           </DialogTitle>
           <DialogDescription>
             {{ dialogState === 'success'
-              ? 'Seu carrinho já foi atualizado, escolha o próximo passo.'
-              : 'Informe quantas unidades deseja levar. Consultamos o estoque em tempo real.' }}
+              ? ''
+              : '' }}
           </DialogDescription>
         </DialogHeader>
 
-        <div class="flex flex-col gap-4 rounded-2xl border border-border/70 bg-muted/40 p-4 sm:flex-row">
-          <div class="flex h-32 w-full items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-white sm:w-48">
+        <div class="grid gap-3 rounded-2xl border border-border/70 bg-white p-3 sm:grid-cols-[1fr_1.2fr] sm:items-center">
+          <div class="overflow-hidden rounded-xl border border-border/60 bg-muted">
             <img
               v-if="selectedProduct.image"
               :src="selectedProduct.image"
               :alt="selectedProduct.name"
-              class="h-full w-full object-cover"
+              class="h-28 w-full object-cover"
             >
-            <div v-else class="flex h-full w-full items-center justify-center text-muted-foreground">
+            <div v-else class="flex h-28 w-full items-center justify-center text-muted-foreground">
               <ImageIcon class="h-10 w-10" />
             </div>
           </div>
-          <div class="flex-1 space-y-2">
-            <p class="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+          <div class="space-y-2">
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-sm font-semibold text-foreground leading-tight">{{ selectedProduct.name }}</p>
+              <div class="flex flex-col items-end gap-1">
+                <span class="rounded-full bg-brand-cyan/10 px-2.5 py-1 text-xs font-semibold text-brand-cyan whitespace-nowrap">
+                  {{ availableStock }} {{ availableStock === 1 ? 'un' : 'un' }}
+                </span>
+                <span class="text-[10px] text-muted-foreground">{{ availableStock !== 1 ? '' : '' }}</span>
+              </div>
+            </div>
+            <p class="text-xs uppercase tracking-[0.25em] text-muted-foreground">
               {{ selectedProduct.category || 'Coleção' }}
             </p>
-            <p class="text-xl font-semibold text-foreground">{{ selectedProduct.name }}</p>
-            <p class="text-sm text-muted-foreground line-clamp-3">
-              {{ selectedProduct.description || 'Peça exclusiva da Trinket Store.' }}
-            </p>
-            <div>
-              <p class="text-2xl font-bold text-foreground">{{ formatPrice(selectedProduct.priceInCents) }}</p>
-              <p class="text-xs uppercase tracking-[0.3em] text-muted-foreground">Valor unitário</p>
+            <div class="space-y-1">
+              <div class="flex items-baseline gap-2">
+                <span class="text-xs font-semibold text-muted-foreground">Total:</span>
+                <p class="text-2xl font-bold text-brand-cyan">
+                  {{ formatPrice((selectedProduct.priceInCents || 0) * Math.max(selectedQuantity, 1)) }}
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div v-if="dialogState === 'select'" class="space-y-5">
-          <div class="rounded-2xl border border-border/70 bg-white px-4 py-3 text-sm">
-            <div class="flex items-center justify-between gap-4">
-              <div>
-                <p class="font-semibold text-foreground">Estoque disponível</p>
-                <p class="text-foreground">
-                  <span v-if="inventoryLoading">Consultando...</span>
-                  <span v-else>{{ availableStock }} unidade{{ availableStock === 1 ? '' : 's' }}</span>
-                </p>
-              </div>
-              <button
-                type="button"
-                class="text-xs font-semibold text-brand-cyan transition hover:underline disabled:opacity-50"
-                :disabled="inventoryLoading"
-                @click="refreshInventory"
-              >
-                Atualizar
-              </button>
-            </div>
-            <p class="mt-1 text-xs text-muted-foreground">Você nunca conseguirá pedir acima do estoque imediato.</p>
-          </div>
-
+        <div v-if="dialogState === 'select'" class="space-y-4">
           <div
             v-if="!inventoryLoading && availableStock === 0"
             class="flex items-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
@@ -170,26 +154,44 @@
             <span>Esse produto está indisponível no momento. Assim que repormos você poderá adicionar novamente.</span>
           </div>
 
-          <div>
-            <p class="text-sm font-semibold text-foreground">Quantidade desejada</p>
-            <div class="mt-2 w-full max-w-xs">
-              <NumberField
-                :model-value="selectedQuantity"
-                :min="1"
-                :max="Math.max(availableStock, 1)"
-                :disabled="!hasStock || inventoryLoading"
-                @update:model-value="handleQuantityChange"
-              >
-                <NumberFieldContent>
-                  <NumberFieldDecrement />
-                  <NumberFieldInput />
-                  <NumberFieldIncrement />
-                </NumberFieldContent>
-              </NumberField>
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div class="flex-shrink-0">
+              <p class="text-sm font-semibold text-foreground">Quantidade desejada</p>
+              <div class="mt-2 w-32">
+                <NumberField
+                  :model-value="selectedQuantity"
+                  :min="1"
+                  :max="Math.max(availableStock, 1)"
+                  :disabled="!hasStock || inventoryLoading"
+                  @update:model-value="handleQuantityChange"
+                >
+                  <NumberFieldContent>
+                    <NumberFieldDecrement />
+                    <NumberFieldInput />
+                    <NumberFieldIncrement />
+                  </NumberFieldContent>
+                </NumberField>
+              </div>
             </div>
-            <p class="mt-2 text-xs text-muted-foreground">
-              Se precisar de mais unidades, fale com a equipe no evento ;)
-            </p>
+
+            <div class="flex flex-col gap-2 sm:flex-row sm:gap-3">
+              <button
+                type="button"
+                class="inline-flex items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+                @click="addDialogOpen = false"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-400 px-5 py-2 text-sm font-semibold text-black shadow-md transition hover:bg-emerald-500 disabled:opacity-60"
+                :disabled="!hasStock || inventoryLoading"
+                @click="handleConfirmAdd"
+              >
+                <ShoppingCart class="h-4 w-4" />
+                Adicionar ao carrinho
+              </button>
+            </div>
           </div>
 
           <div
@@ -204,11 +206,7 @@
           <div class="flex items-start gap-3 rounded-2xl border border-brand-cyan/40 bg-brand-cyan/5 px-4 py-3">
             <CheckCircle2 class="h-5 w-5 text-brand-cyan" />
             <div>
-              <p class="font-semibold text-foreground">Produto adicionado ao carrinho!</p>
-              <p class="text-sm text-muted-foreground">
-                {{ lastAddedQuantity }} unidade{{ lastAddedQuantity > 1 ? 's' : '' }} de
-                {{ selectedProduct.name }} estão reservadas para você.
-              </p>
+              <p class="font-semibold text-foreground">Produto adicionado!</p>
             </div>
           </div>
           <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
@@ -221,7 +219,7 @@
             </button>
             <button
               type="button"
-              class="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-cyan bg-brand-cyan px-4 py-2 text-sm font-semibold text-foreground shadow-sm hover:bg-brand-cyan/90"
+              class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-400 px-4 py-2 text-sm font-semibold text-black shadow-md hover:bg-emerald-500"
               @click="goToCart"
             >
               <ShoppingCart class="h-4 w-4" />
@@ -229,25 +227,6 @@
             </button>
           </div>
         </div>
-
-        <DialogFooter v-if="dialogState === 'select'">
-          <button
-            type="button"
-            class="inline-flex items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
-            @click="addDialogOpen = false"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-cyan px-5 py-2 text-sm font-semibold text-foreground shadow-md transition hover:bg-brand-cyan/90 disabled:opacity-60"
-            :disabled="!hasStock || inventoryLoading"
-            @click="handleConfirmAdd"
-          >
-            <ShoppingCart class="h-4 w-4" />
-            Adicionar ao carrinho
-          </button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   </section>

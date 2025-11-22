@@ -1,6 +1,6 @@
 import { readonly } from 'vue'
 import type { ApiError } from '~/types/core/api'
-import type { CreateOrderPayload, OrderResponse } from '~/types/orders'
+import type { PixCheckoutResponse, OrderResponse } from '~/types/orders'
 import type { StorefrontCartItem } from '~/types/storefront/cart'
 import { useBackendFetchDirect } from '~/composables/core/useBackendFetch'
 import { useErrorHandler } from '~/composables/helpers/useErrorHandler'
@@ -22,9 +22,7 @@ export const useStorefrontCheckout = () => {
     userId: number
     items: readonly StorefrontCartItem[]
     totalAmountInCents: number
-    pixCode: string
-    checkoutId?: string
-    paymentIntent?: string
+    description?: string
   }) => {
     if (!input.items.length) {
       throw new Error('Nenhum item no carrinho para criar o pedido.')
@@ -33,14 +31,11 @@ export const useStorefrontCheckout = () => {
     creating.value = true
     error.value = null
 
-    const payload: CreateOrderPayload = {
+    const payload = {
       userId: input.userId,
-      statusOrder: 'pending',
-      totalOrders: Math.max(input.totalAmountInCents, 0),
-      currencyOrder: 'BRL',
-      checkoutId: input.checkoutId ?? buildReference('CHK'),
-      paymentIntent: input.paymentIntent ?? buildReference('PAY'),
-      pickupQrToken: input.pixCode.slice(0, 300),
+      totalAmountInCents: Math.max(input.totalAmountInCents, 0),
+      currency: 'BRL',
+      description: input.description,
       items: input.items.map((item) => {
         const unitAmount = item.priceInCents ?? 0
         const safeQuantity = Math.min(
@@ -57,15 +52,15 @@ export const useStorefrontCheckout = () => {
     }
 
     try {
-      const order = await useBackendFetchDirect<OrderResponse>('/orders', {
+      const response = await useBackendFetchDirect<PixCheckoutResponse>('/checkout/pix', {
         method: 'POST',
         body: payload,
         headers: {
           'Content-Type': 'application/json',
         },
       })
-      lastOrder.value = order
-      return order
+      lastOrder.value = response.order
+      return response
     } catch (err) {
       error.value = normalizeApiError(err)
       throw err

@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Data
@@ -28,10 +29,12 @@ public class UpdateOrderRequest {
     @Size(max = 100, message = "Payment intent não pode ter mais de 100 caracteres")
     private String paymentIntent;
 
-    @Size(max = 300, message = "Token QR não pode ter mais de 300 caracteres")
     private String pickupQrToken;
+
+    private String pixQrCodeBase64;
+
+    private OffsetDateTime pixExpiresAt;
 
     @Valid
     private List<CreateOrderItemRequest> items;
 }
-

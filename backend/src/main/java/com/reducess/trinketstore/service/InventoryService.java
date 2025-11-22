@@ -2,6 +2,7 @@ package com.reducess.trinketstore.service;
 
 import com.reducess.trinketstore.dto.CreateInventoryRequest;
 import com.reducess.trinketstore.dto.InventoryResponse;
+import com.reducess.trinketstore.dto.CreateOrderItemRequest;
 import com.reducess.trinketstore.dto.UpdateInventoryRequest;
 import com.reducess.trinketstore.entity.Inventory;
 import com.reducess.trinketstore.exception.InventoryConflictException;
@@ -162,6 +163,47 @@ public class InventoryService {
     public void deleteInventoryByProductId(Integer productId) {
         inventoryRepository.findByProductId(productId)
                 .ifPresent(inventoryRepository::delete);
+    }
+
+    @Transactional
+    public void removeStockByProductId(Integer productId, Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new InventoryConflictException("Quantidade deve ser maior que zero");
+        }
+        Inventory inventory = inventoryRepository.findByProductId(productId)
+                .orElseThrow(() -> new InventoryNotFoundException("Inventário não encontrado para este produto"));
+
+        int newQuantity = inventory.getQtyOnHand() - quantity;
+        if (newQuantity < 0) {
+            throw new InventoryConflictException("Estoque insuficiente para o produto ID " + productId);
+        }
+        inventory.setQtyOnHand(newQuantity);
+        inventoryRepository.save(inventory);
+    }
+
+    @Transactional
+    public void addStockByProductId(Integer productId, Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            return;
+        }
+        Inventory inventory = inventoryRepository.findByProductId(productId)
+                .orElseThrow(() -> new InventoryNotFoundException("Inventário não encontrado para este produto"));
+        inventory.setQtyOnHand(inventory.getQtyOnHand() + quantity);
+        inventoryRepository.save(inventory);
+    }
+
+    @Transactional(readOnly = true)
+    public void verifyStockAvailability(List<CreateOrderItemRequest> items) {
+        if (items == null || items.isEmpty()) {
+            throw new InventoryConflictException("Inclua ao menos um item no pedido.");
+        }
+        for (CreateOrderItemRequest item : items) {
+            Inventory inventory = inventoryRepository.findByProductId(item.getProductId())
+                    .orElseThrow(() -> new InventoryNotFoundException("Inventário não encontrado para o produto " + item.getProductId()));
+            if (inventory.getQtyOnHand() < item.getQtyItems()) {
+                throw new InventoryConflictException("Estoque insuficiente para o produto " + item.getProductId());
+            }
+        }
     }
 
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {

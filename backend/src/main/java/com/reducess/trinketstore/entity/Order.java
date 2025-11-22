@@ -37,8 +37,14 @@ public class Order {
     @Column(name = "payment_intent", nullable = false, length = 100, unique = true)
     private String paymentIntent;
 
-    @Column(name = "pickup_qr_token", length = 300)
+    @Column(name = "pickup_qr_token", columnDefinition = "TEXT")
     private String pickupQrToken;
+
+    @Column(name = "pix_qr_code_base64", columnDefinition = "TEXT")
+    private String pixQrCodeBase64;
+
+    @Column(name = "pix_expires_at")
+    private OffsetDateTime pixExpiresAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -54,4 +60,3 @@ public class Order {
         }
     }
 }
-

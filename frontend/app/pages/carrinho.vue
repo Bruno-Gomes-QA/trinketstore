@@ -15,60 +15,50 @@
           </NuxtLink>
 
           <div class="rounded-3xl border border-border/60 bg-white/95 shadow-lg shadow-sky-100/70">
-            <div class="border-b border-border/50 px-6 py-5 lg:px-10">
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.3em] text-brand-cyan">Carrinho</p>
-                  <h1 class="text-2xl font-bold text-foreground sm:text-3xl">Finalize sua experiência Trinket</h1>
-                  <p class="text-sm text-muted-foreground">Revise os itens, conecte seu Google e gere o PIX com validade de 5 minutos.</p>
+            <div class="border-b border-border/50 px-4 py-4 sm:px-6 lg:px-10">
+              <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-5">
+                  <div>
+                    <p class="text-xl font-semibold uppercase tracking-[0.25em] text-brand-cyan">Checkout</p>
+                  </div>
                 </div>
-                <div class="text-right">
-                  <p class="text-xs uppercase tracking-[0.3em] text-muted-foreground">Itens</p>
-                  <p class="text-3xl font-semibold text-foreground">{{ totalItems }}</p>
+                
+                <div class="flex items-start gap-3 sm:gap-4">
+                  <template v-for="(step, index) in checkoutSteps" :key="step.id">
+                    <div class="flex flex-col items-center gap-1.5 sm:gap-2">
+                      <div
+                        class="flex flex-shrink-0 items-center justify-center rounded-full transition-all duration-300"
+                        :class="[
+                          index <= currentStepIndex
+                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                            : 'bg-muted text-muted-foreground',
+                          'h-8 w-8 sm:h-12 sm:w-12'
+                        ]"
+                      >
+                        <component :is="step.icon" :class="['h-3.5 w-3.5 sm:h-5 sm:w-5']" />
+                      </div>
+                      <div class="hidden text-center sm:block">
+                        <p class="text-xs font-semibold text-foreground">{{ step.label }}</p>
+                        <p class="text-[10px] text-muted-foreground">{{ step.description }}</p>
+                      </div>
+                    </div>
+                    <div
+                      v-if="index < checkoutSteps.length - 1"
+                      class="relative mt-4 h-0.5 flex-1 overflow-hidden rounded-full bg-muted sm:mt-6 sm:h-1"
+                    >
+                      <div
+                        class="h-full rounded-full bg-emerald-500 shadow-sm transition-all duration-500 ease-out"
+                        :style="{
+                          width: index < currentStepIndex ? '100%' : index === currentStepIndex ? '50%' : '0%'
+                        }"
+                      ></div>
+                    </div>
+                  </template>
                 </div>
               </div>
             </div>
 
-            <div class="space-y-8 px-4 py-8 sm:px-6 lg:px-10">
-              <section class="rounded-3xl border border-brand-cyan/20 bg-gradient-to-br from-sky-50 via-emerald-50 to-amber-50 p-5 shadow-[0_15px_50px_rgba(14,165,233,0.12)]">
-                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.3em] text-brand-cyan">Fluxo do pedido</p>
-                    <p class="text-lg font-semibold text-foreground">Passo {{ currentStepIndex + 1 }} de {{ checkoutSteps.length }}</p>
-                  </div>
-                  <p class="text-sm text-muted-foreground">{{ checkoutSteps[currentStepIndex]?.description }}</p>
-                </div>
-                <div class="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/40">
-                  <div
-                    class="h-full rounded-full bg-gradient-to-r from-emerald-400 via-brand-cyan to-amber-300 transition-all"
-                    :style="{ width: `${stepProgress}%` }"
-                  />
-                </div>
-                <div class="mt-5 grid gap-3 md:grid-cols-3">
-                  <article
-                    v-for="(step, index) in checkoutSteps"
-                    :key="step.id"
-                    class="rounded-2xl border p-4 transition"
-                    :class="[
-                      index < currentStepIndex ? 'border-emerald-400 bg-white shadow-[0_0_35px_rgba(16,185,129,0.25)]' : '',
-                      index === currentStepIndex ? 'border-brand-cyan bg-white/90 shadow-[0_12px_40px_rgba(14,165,233,0.3)]' : '',
-                      index > currentStepIndex ? 'border-border/70 bg-white/70' : '',
-                    ]"
-                  >
-                    <div class="flex items-center gap-3">
-                      <component
-                        :is="step.icon"
-                        class="h-5 w-5"
-                        :class="index <= currentStepIndex ? 'text-brand-cyan' : 'text-muted-foreground'"
-                      />
-                      <div>
-                        <p class="text-sm font-semibold text-foreground">{{ step.label }}</p>
-                        <p class="text-xs text-muted-foreground">{{ step.description }}</p>
-                      </div>
-                    </div>
-                  </article>
-                </div>
-              </section>
+            <div class="space-y-6 px-4 py-6 sm:px-6 lg:px-10">
 
               <div
                 v-if="!hasItems"
@@ -85,7 +75,7 @@
               </div>
 
               <div v-else>
-                <div v-if="checkoutStep === 'review'" class="grid gap-8 lg:grid-cols-[2fr_1fr]">
+                <div v-if="checkoutStep === 'review'" class="grid gap-6 lg:grid-cols-[2fr_1fr]">
                   <div class="space-y-4">
                     <article
                       v-for="item in items"
@@ -106,7 +96,6 @@
                             </div>
                           </div>
                           <div>
-                            <p class="text-sm uppercase tracking-[0.3em] text-muted-foreground">{{ item.slug }}</p>
                             <h3 class="text-lg font-semibold text-foreground">{{ item.name }}</h3>
                             <p class="text-sm text-muted-foreground">
                               {{ formatPrice(item.priceInCents) }}
@@ -136,9 +125,6 @@
                               </NumberFieldContent>
                             </NumberField>
                           </div>
-                          <p class="text-sm font-semibold text-foreground">
-                            {{ formatLineTotal(item.priceInCents, item.quantity) }}
-                          </p>
                           <button
                             type="button"
                             class="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground transition hover:text-destructive"
@@ -152,19 +138,11 @@
                     </article>
                   </div>
 
-                  <aside class="space-y-4">
-                    <div class="rounded-3xl border border-brand-cyan/30 bg-gradient-to-br from-white via-sky-50 to-emerald-50 p-5 shadow-[0_12px_40px_rgba(14,165,233,0.15)]">
+                  <aside class="space-y-3">
+                    <div class="rounded-3xl border border-brand-cyan/30 bg-white p-5 shadow-sm">
                       <div class="flex items-center justify-between text-sm">
-                        <span class="text-muted-foreground">Subtotal</span>
-                        <span class="font-semibold text-foreground">{{ formatCurrency(totalAmountInCents) }}</span>
-                      </div>
-                      <div class="mt-2 flex items-center justify-between text-sm">
-                        <span class="text-muted-foreground">Retirada</span>
-                        <span class="font-semibold text-foreground">No evento · Grátis</span>
-                      </div>
-                      <div class="mt-4 border-t border-border/50 pt-4">
-                        <p class="text-xs uppercase tracking-[0.3em] text-muted-foreground">Total</p>
-                        <p class="text-3xl font-bold text-foreground">{{ formatCurrency(totalAmountInCents) }}</p>
+                        <span class="text-muted-foreground">Total</span>
+                        <span class="text-2xl font-bold text-foreground">{{ formatCurrency(totalAmountInCents) }}</span>
                       </div>
                       <div
                         v-if="cartBlockedMessage"
@@ -175,86 +153,63 @@
                       <div class="mt-4 flex flex-col gap-3">
                         <button
                           type="button"
-                          class="inline-flex items-center justify-center rounded-xl bg-brand-cyan px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition hover:bg-brand-cyan/90 disabled:opacity-60"
+                          class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600 hover:shadow-xl hover:shadow-emerald-500/40 disabled:opacity-60 disabled:shadow-none"
                           :disabled="Boolean(cartBlockedMessage)"
                           @click="handleProceedToIdentify"
                         >
                           Confirmar itens
                         </button>
-                        <button
-                          type="button"
-                          class="inline-flex items-center justify-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition hover:text-foreground disabled:opacity-60"
-                          :disabled="stockRefreshing"
-                          @click="refreshStocks"
-                        >
-                          <RefreshCcw class="h-4 w-4" :class="stockRefreshing ? 'animate-spin text-brand-cyan' : ''" />
-                          Atualizar disponibilidade
-                        </button>
-                        <button
-                          type="button"
-                          class="inline-flex items-center justify-center rounded-xl border border-destructive/30 px-4 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/5"
-                          @click="handleClearCart"
-                        >
-                          Esvaziar carrinho
-                        </button>
                       </div>
                       <p v-if="stockSyncError" class="mt-3 text-xs text-destructive">{{ stockSyncError }}</p>
                     </div>
-                    <NuxtLink
-                      to="/"
-                      class="inline-flex w-full items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:border-brand-cyan hover:text-brand-cyan"
-                    >
-                      <Sparkles class="mr-2 h-4 w-4" />
-                      Continuar comprando
-                    </NuxtLink>
                   </aside>
                 </div>
 
-                <div v-else-if="checkoutStep === 'identify'" class="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
-                  <section class="rounded-3xl border border-brand-cyan/40 bg-white/95 p-6 shadow-[0_12px_45px_rgba(14,165,233,0.1)]">
-                    <p class="text-xs font-semibold uppercase tracking-[0.3em] text-brand-cyan">Passo 2</p>
-                    <h2 class="text-2xl font-bold text-foreground">Identifique-se com Google</h2>
-                    <p class="text-sm text-muted-foreground">Usamos seu nome e email para vincular o pedido. Nenhum outro campo é necessário.</p>
+                <div v-if="checkoutStep === 'identify'" class="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+                  <section class="rounded-3xl border border-brand-cyan/30 bg-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-brand-cyan">Passo 2</p>
+                    <h2 class="text-xl font-bold text-foreground">Entrar com Google</h2>
+                    <p class="text-sm text-muted-foreground">Use sua conta para ligar o pedido a você.</p>
 
-                    <div class="mt-6 flex flex-col gap-4 rounded-2xl border border-dashed border-brand-cyan/40 bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div v-if="!isAuthenticated" class="mt-4 flex flex-col gap-3 rounded-2xl border border-dashed border-brand-cyan/40 bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p class="text-sm font-semibold text-foreground">Status</p>
-                        <p class="text-sm text-muted-foreground">
-                          {{ isAuthenticated ? 'Conta Google conectada' : 'Você ainda não fez login' }}
+                        <p class="text-sm font-semibold text-foreground">Faça login para continuar</p>
+                        <p class="text-xs text-muted-foreground">
+                          Conecte sua conta Google para prosseguir
                         </p>
                       </div>
-                      <div class="flex items-center gap-3">
-                        <button
-                          type="button"
-                          class="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-brand-cyan/60 bg-white text-brand-cyan shadow-sm transition hover:border-brand-cyan hover:bg-brand-cyan/10 disabled:opacity-60"
-                          :disabled="authLoading"
-                          :aria-label="authLoading ? 'Conectando ao Google' : 'Entrar com Google'"
-                          @click="handleGoogleLogin"
-                        >
-                          <Icon
-                            name="logos:google-icon"
-                            :class="['h-5 w-5 transition', authLoading ? 'animate-pulse opacity-70' : '']"
-                          />
-                        </button>
-                        <span class="text-xs text-muted-foreground">
-                          {{ isAuthenticated ? 'Tudo certo! Pode continuar.' : 'Clique no botão para entrar com Google.' }}
-                        </span>
+                      <button
+                        type="button"
+                        class="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-brand-cyan/60 bg-white px-4 text-sm font-semibold text-brand-cyan shadow-sm transition hover:border-brand-cyan hover:bg-brand-cyan/10 disabled:opacity-60"
+                        :disabled="authLoading"
+                        :aria-label="authLoading ? 'Conectando ao Google' : 'Entrar com Google'"
+                        @click="handleGoogleLogin"
+                      >
+                        <Icon
+                          name="logos:google-icon"
+                          :class="['h-5 w-5 transition', authLoading ? 'animate-pulse opacity-70' : '']"
+                        />
+                        Entrar com Google
+                      </button>
+                    </div>
+
+                    <div v-if="isAuthenticated" class="mt-4">
+                      <div class="mb-3 flex items-center gap-2 text-sm">
+                        <CheckCircle2 class="h-5 w-5 text-emerald-500" />
+                        <span class="font-semibold text-foreground">Identificação confirmada</span>
+                      </div>
+                      <div class="grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-2xl border border-border/60 bg-muted/30 p-3">
+                          <p class="text-xs uppercase tracking-[0.25em] text-muted-foreground">Nome</p>
+                          <p class="text-base font-semibold text-foreground">{{ customerName }}</p>
+                        </div>
+                        <div class="rounded-2xl border border-border/60 bg-muted/30 p-3">
+                          <p class="text-xs uppercase tracking-[0.25em] text-muted-foreground">E-mail</p>
+                          <p class="text-sm font-semibold text-foreground break-all">{{ customerEmail }}</p>
+                        </div>
                       </div>
                     </div>
 
-                    <div v-if="isAuthenticated" class="mt-6 grid gap-4 sm:grid-cols-2">
-                      <div class="rounded-2xl border border-border/60 bg-muted/40 p-4">
-                        <p class="text-xs uppercase tracking-[0.3em] text-muted-foreground">Nome</p>
-                        <p class="text-lg font-semibold text-foreground">{{ customerName }}</p>
-                      </div>
-                      <div class="rounded-2xl border border-border/60 bg-muted/40 p-4">
-                        <p class="text-xs uppercase tracking-[0.3em] text-muted-foreground">E-mail</p>
-                        <p class="text-base font-semibold text-foreground break-all">{{ customerEmail }}</p>
-                      </div>
-                    </div>
-                    <p v-else class="mt-6 text-sm text-muted-foreground">Faça login com Google para liberar o pagamento.</p>
-
-                    <p v-if="profileLoading" class="mt-3 text-xs text-muted-foreground">Carregando dados do evento...</p>
                     <div
                       v-if="checkoutError"
                       class="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
@@ -262,13 +217,13 @@
                       {{ checkoutError?.message }}
                     </div>
 
-                    <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
                       <button
                         type="button"
                         class="inline-flex items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
                         @click="checkoutStep = 'review'"
                       >
-                        Voltar para o carrinho
+                        Voltar
                       </button>
                       <button
                         type="button"
@@ -277,137 +232,60 @@
                         @click="handleGeneratePayment"
                       >
                         <CheckCircle2 class="h-4 w-4" />
-                        Gerar pagamento PIX
+                        Gerar PIX
                       </button>
                     </div>
                   </section>
 
-                  <aside class="space-y-4">
-                    <div class="rounded-3xl border border-border/60 bg-white/90 p-5 shadow-sm">
+                  <Dialog :open="generatingPayment">
+                    <DialogContent class="sm:max-w-md" :show-close="false">
+                      <DialogHeader>
+                        <DialogTitle class="text-center text-xl font-bold">
+                          Processando seu pedido
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div class="space-y-6 py-4">
+                        <div v-if="loadingMessages[currentMessageIndex]" class="flex flex-col items-center justify-center gap-4">
+                          <div class="relative">
+                            <component
+                              :is="loadingMessages[currentMessageIndex]!.icon"
+                              class="h-16 w-16 text-brand-cyan animate-pulse"
+                            />
+                          </div>
+                          <div class="text-center">
+                            <p class="text-lg font-semibold text-foreground">
+                              {{ loadingMessages[currentMessageIndex]!.title }}
+                            </p>
+                            <p class="text-sm text-muted-foreground">
+                              {{ loadingMessages[currentMessageIndex]!.description }}
+                            </p>
+                          </div>
+                        </div>
+                        <div class="flex items-center justify-center gap-2">
+                          <div
+                            v-for="(_, index) in loadingMessages"
+                            :key="index"
+                            class="h-2 w-2 rounded-full transition-all duration-300"
+                            :class="[
+                              index === currentMessageIndex
+                                ? 'bg-brand-cyan w-6'
+                                : 'bg-muted'
+                            ]"
+                          />
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <aside class="space-y-3">
+                    <div class="rounded-3xl border border-border/60 bg-white p-5 shadow-sm">
                       <p class="text-sm font-semibold text-foreground">Resumo</p>
-                      <p class="text-3xl font-bold text-foreground">{{ formatCurrency(totalAmountInCents) }}</p>
+                      <p class="text-2xl font-bold text-foreground">{{ formatCurrency(totalAmountInCents) }}</p>
                       <ul class="mt-3 space-y-2 text-xs text-muted-foreground">
                         <li v-for="item in items" :key="`identify-${item.productId}`">
-                          {{ item.name }} · {{ Math.max(item.quantity, 0) }} un · {{ formatLineTotal(item.priceInCents, item.quantity) }}
+                          {{ item.name }} · {{ Math.max(item.quantity, 0) }} un
                         </li>
                       </ul>
-                    </div>
-                    <div class="rounded-3xl border border-border/60 bg-white/90 p-5 shadow-sm">
-                      <p class="text-sm font-semibold text-foreground">Dados obtidos do Google</p>
-                      <p class="text-sm text-muted-foreground">
-                        Usamos as informações fornecidas pela sua conta para ligar o pedido à sua reserva.
-                      </p>
-                    </div>
-                  </aside>
-                </div>
-
-                <div v-else class="space-y-6">
-                  <section class="rounded-3xl border border-brand-cyan/40 bg-white/95 p-6 shadow-[0_20px_60px_rgba(14,165,233,0.15)]">
-                    <div class="flex flex-col gap-2 border-b border-border/40 pb-4">
-                      <div class="flex flex-wrap items-center gap-3">
-                        <p class="text-xs uppercase tracking-[0.3em] text-brand-cyan">Pagamento via PIX (mock)</p>
-                        <span
-                          v-if="activeOrder"
-                          class="rounded-full bg-brand-cyan/10 px-3 py-1 text-xs font-semibold text-brand-cyan"
-                        >
-                          Pedido #{{ activeOrder.idOrder }}
-                        </span>
-                      </div>
-                      <div class="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                        <div class="flex items-center gap-2">
-                          <Clock3 class="h-4 w-4 text-brand-cyan" />
-                          Código expira em <span class="font-semibold text-foreground">{{ countdownLabel }}</span>
-                        </div>
-                        <div class="text-xs text-muted-foreground">
-                          Valor total: <span class="font-semibold text-foreground">{{ formatCurrency(totalAmountInCents) }}</span>
-                        </div>
-                      </div>
-                      <div class="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          class="h-full rounded-full bg-gradient-to-r from-emerald-400 via-brand-cyan to-amber-300 transition-all"
-                          :style="{ width: `${progressPercent}%` }"
-                        />
-                      </div>
-                    </div>
-
-                    <div class="mt-6 grid gap-5 lg:grid-cols-2">
-                      <div class="rounded-3xl border border-brand-cyan/30 bg-gradient-to-b from-white to-sky-50 p-5 text-center shadow-[0_10px_40px_rgba(14,165,233,0.12)]">
-                        <p class="text-sm font-semibold text-foreground">Escaneie o QR Code</p>
-                        <div class="mt-4 flex justify-center">
-                          <img
-                            v-if="pixQrUrl"
-                            :src="pixQrUrl"
-                            alt="QR Code do PIX"
-                            class="w-full max-w-xs rounded-2xl border border-border/50 bg-white p-3 shadow-inner"
-                          >
-                          <div v-else class="h-60 w-full max-w-xs rounded-2xl border border-dashed border-border/60 bg-muted"></div>
-                        </div>
-                      </div>
-                      <div class="rounded-3xl border border-amber-200 bg-amber-50/80 p-5 shadow-[0_15px_35px_rgba(250,204,21,0.25)]">
-                        <p class="text-sm font-semibold text-foreground">Pix copia e cola</p>
-                        <p class="text-xs text-muted-foreground">Use esse código no app do seu banco.</p>
-                        <pre class="mt-3 max-h-48 overflow-y-auto rounded-2xl border border-amber-200 bg-white/90 p-3 text-left text-xs font-mono text-foreground">{{ pixCode }}</pre>
-                        <button
-                          type="button"
-                          class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-400 px-4 py-2 text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-300"
-                          @click="handleCopyPix"
-                        >
-                          <Copy class="h-4 w-4" />
-                          {{ copied ? 'Código copiado!' : 'Copiar código PIX' }}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div
-                      v-if="paymentExpired"
-                      class="mt-4 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
-                    >
-                      <AlertTriangle class="h-4 w-4" />
-                      <span>O tempo expirou. Gere um novo código para continuar.</span>
-                    </div>
-
-                    <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-                      <button
-                        type="button"
-                        class="inline-flex items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
-                        @click="checkoutStep = 'review'"
-                      >
-                        Voltar para o carrinho
-                      </button>
-                      <button
-                        type="button"
-                        class="inline-flex items-center justify-center rounded-xl border border-brand-cyan px-4 py-2 text-sm font-semibold text-brand-cyan transition hover:bg-brand-cyan/10 disabled:opacity-60"
-                        :disabled="creatingOrder"
-                        @click="handleGeneratePayment"
-                      >
-                        Gerar novo PIX
-                      </button>
-                    </div>
-                  </section>
-
-                  <aside class="space-y-4">
-                    <div class="rounded-3xl border border-border/60 bg-white/90 p-5 shadow-sm">
-                      <p class="text-sm font-semibold text-foreground">Resumo do pedido</p>
-                      <div class="mt-3 space-y-2 text-sm">
-                        <div class="flex items-center justify-between">
-                          <span class="text-muted-foreground">Total</span>
-                          <span class="font-semibold text-foreground">{{ formatCurrency(totalAmountInCents) }}</span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                          <span class="text-muted-foreground">Itens</span>
-                          <span class="font-semibold text-foreground">{{ totalItems }}</span>
-                        </div>
-                      </div>
-                      <ul class="mt-4 space-y-2 text-xs text-muted-foreground">
-                        <li v-for="item in items" :key="`payment-${item.productId}`">
-                          {{ item.name }} · {{ Math.max(item.quantity, 0) }} un · {{ formatLineTotal(item.priceInCents, item.quantity) }}
-                        </li>
-                      </ul>
-                    </div>
-                    <div class="rounded-3xl border border-border/60 bg-muted/30 p-5" v-if="customerName">
-                      <p class="text-sm font-semibold text-foreground">Dados do comprador</p>
-                      <p class="text-base text-foreground">{{ customerName }}</p>
-                      <p class="text-sm text-muted-foreground">{{ customerEmail }}</p>
                     </div>
                   </aside>
                 </div>
@@ -424,10 +302,35 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import type { Component } from 'vue'
 import { useClipboard } from '@vueuse/core'
-import { ArrowLeft, Trash2, RefreshCcw, Clock3, Copy, AlertTriangle, ShoppingCart, CheckCircle2, Sparkles, UserCheck, QrCode } from 'lucide-vue-next'
+import { ArrowLeft, Trash2, RefreshCcw, Clock3, Copy, AlertTriangle, ShoppingCart, CheckCircle2, Sparkles, UserCheck, QrCode, Package, CreditCard, Loader2 } from 'lucide-vue-next'
 import type { OrderResponse } from '~/types/orders'
+import { useBackendFetchDirect } from '~/composables/core/useBackendFetch'
+
+const loadingMessages = [
+  {
+    icon: Package,
+    title: 'Registrando seu pedido',
+    description: 'Estamos reservando os itens do seu carrinho...',
+  },
+  {
+    icon: CreditCard,
+    title: 'Gerando código PIX',
+    description: 'Criando o pagamento seguro para você...',
+  },
+  {
+    icon: Sparkles,
+    title: 'Quase lá!',
+    description: 'Em breve você poderá retirar seus produtos...',
+  },
+  {
+    icon: CheckCircle2,
+    title: 'Finalizando',
+    description: 'Só mais um momento, estamos preparando tudo...',
+  },
+]
 
 const onboardingRef = ref<any>(null)
 const showOnboarding = () => onboardingRef.value?.show()
@@ -437,6 +340,7 @@ useSeoMeta({
   description: 'Revise seus itens e finalize o pedido com pagamento via PIX.',
 })
 
+const router = useRouter()
 const checkoutSteps: Array<{ id: CheckoutStepId; label: string; description: string; icon: Component }> = [
   { id: 'review', label: 'Carrinho', description: 'Revise os itens e estoque', icon: ShoppingCart },
   { id: 'identify', label: 'Identificação', description: 'Conecte-se com Google', icon: UserCheck },
@@ -445,7 +349,7 @@ const checkoutSteps: Array<{ id: CheckoutStepId; label: string; description: str
 
 type CheckoutStepId = 'review' | 'identify' | 'payment'
 
-const PAYMENT_WINDOW_SECONDS = 60 * 5
+const DEFAULT_PAYMENT_WINDOW_SECONDS = 60 * 5
 
 const {
   items,
@@ -455,6 +359,7 @@ const {
   updateItemQuantity,
   removeItem,
   clearCart,
+  setCartOwner,
   setItemStock,
 } = useStorefrontCart()
 const { fetchInventoryForProduct } = useStorefrontInventory()
@@ -474,11 +379,18 @@ const stepProgress = computed(() => {
 const stockRefreshing = ref(false)
 const stockSyncError = ref<string | null>(null)
 const pixCode = ref('')
+const pixQrImage = ref('')
+const pixExpiresAt = ref<string | null>(null)
 const activeOrder = ref<OrderResponse | null>(null)
-const paymentCountdown = ref(PAYMENT_WINDOW_SECONDS)
+const paymentWindowSeconds = ref(DEFAULT_PAYMENT_WINDOW_SECONDS)
+const paymentCountdown = ref(DEFAULT_PAYMENT_WINDOW_SECONDS)
 const paymentInterval = ref<ReturnType<typeof setInterval> | null>(null)
 const paymentExpireTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const paymentExpired = ref(false)
+const orderPollingInterval = ref<ReturnType<typeof setInterval> | null>(null)
+const generatingPayment = ref(false)
+const currentMessageIndex = ref(0)
+const messageInterval = ref<ReturnType<typeof setInterval> | null>(null)
 
 const cartBlockedMessage = computed(() => {
   if (!hasItems.value) return 'Adicione itens antes de continuar.'
@@ -503,10 +415,56 @@ const countdownLabel = computed(() => {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 })
 
-const progressPercent = computed(() => (paymentCountdown.value / PAYMENT_WINDOW_SECONDS) * 100)
-const pixQrUrl = computed(() =>
-  pixCode.value ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(pixCode.value)}` : '',
-)
+const progressPercent = computed(() => {
+  const window = paymentWindowSeconds.value || DEFAULT_PAYMENT_WINDOW_SECONDS
+  if (window <= 0) return 0
+  return (paymentCountdown.value / window) * 100
+})
+const pixQrUrl = computed(() => {
+  if (pixQrImage.value) {
+    return `data:image/png;base64,${pixQrImage.value}`
+  }
+  if (pixCode.value) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(pixCode.value)}`
+  }
+  return ''
+})
+
+const paymentStatusState = computed(() => {
+  const status = activeOrder.value?.statusOrder
+  if (!status) return null
+
+  if (status === 'paid') {
+    return {
+      label: 'Pagamento aprovado',
+      description: 'Recebemos seu PIX. Procure a equipe para retirar seu pedido.',
+      badgeClass: 'bg-emerald-100 text-emerald-800',
+      iconClass: 'text-emerald-500',
+      containerClass: 'border-emerald-200 bg-emerald-50/80',
+      icon: CheckCircle2,
+    }
+  }
+
+  if (status === 'canceled') {
+    return {
+      label: 'Pagamento cancelado',
+      description: 'O PIX foi cancelado ou expirou. Gere um novo QR Code para tentar novamente.',
+      badgeClass: 'bg-destructive/10 text-destructive',
+      iconClass: 'text-destructive',
+      containerClass: 'border-destructive/40 bg-destructive/5',
+      icon: AlertTriangle,
+    }
+  }
+
+  return {
+    label: 'Aguardando pagamento',
+    description: 'Assim que o PIX for reconhecido liberamos automaticamente seu pedido.',
+    badgeClass: 'bg-amber-100 text-amber-800',
+    iconClass: 'text-amber-500',
+    containerClass: 'border-amber-100 bg-amber-50/80',
+    icon: Clock3,
+  }
+})
 
 const formatCurrency = (amount: number) => formatCurrencyFromCents(amount)
 const formatPrice = (amount: number | null) => {
@@ -557,11 +515,16 @@ const handleGoogleLogin = async () => {
   await signInWithGoogle()
 }
 
-const buildPixCode = (name?: string | null) => {
-  const cleaned = (name || 'CLIENTE').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10) || 'CLIENTE'
-  const randomSuffix = Math.random().toString(36).slice(2, 6).toUpperCase()
-  const total = String(Math.max(totalAmountInCents.value, 0)).padStart(5, '0')
-  return `00020126580014BR.GOV.BCB.PIX0114TRINKETSTORE520400005303986540${total}5802BR5915${cleaned.padEnd(10, 'X')}6009SAOPAULO62070503***6304${randomSuffix}`
+const computeSecondsUntil = (raw?: string | null) => {
+  if (!raw) {
+    return DEFAULT_PAYMENT_WINDOW_SECONDS
+  }
+  const target = Date.parse(raw)
+  if (Number.isNaN(target)) {
+    return DEFAULT_PAYMENT_WINDOW_SECONDS
+  }
+  const seconds = Math.max(Math.round((target - Date.now()) / 1000), 0)
+  return seconds || DEFAULT_PAYMENT_WINDOW_SECONDS
 }
 
 const stopPaymentTimer = () => {
@@ -573,11 +536,41 @@ const stopPaymentTimer = () => {
     clearTimeout(paymentExpireTimeout.value)
     paymentExpireTimeout.value = null
   }
+  paymentWindowSeconds.value = DEFAULT_PAYMENT_WINDOW_SECONDS
 }
 
-const startPaymentFlow = () => {
+const stopOrderPolling = () => {
+  if (orderPollingInterval.value) {
+    clearInterval(orderPollingInterval.value)
+    orderPollingInterval.value = null
+  }
+}
+
+const startOrderPolling = (orderId: number | null | undefined) => {
+  if (!orderId) return
+  stopOrderPolling()
+  orderPollingInterval.value = setInterval(async () => {
+    try {
+      const latest = await useBackendFetchDirect<OrderResponse>(`/orders/${orderId}`)
+      activeOrder.value = latest
+      if (latest.statusOrder !== 'pending') {
+        stopOrderPolling()
+        if (latest.statusOrder === 'paid') {
+          stopPaymentTimer()
+          paymentExpired.value = false
+        }
+      }
+    } catch (error) {
+      console.error('[cart] status polling failed', error)
+    }
+  }, 4000)
+}
+
+const startPaymentFlow = (expiresAt?: string | null) => {
   stopPaymentTimer()
-  paymentCountdown.value = PAYMENT_WINDOW_SECONDS
+  const seconds = computeSecondsUntil(expiresAt)
+  paymentWindowSeconds.value = seconds
+  paymentCountdown.value = seconds
   paymentExpired.value = false
 
   paymentInterval.value = setInterval(() => {
@@ -586,10 +579,12 @@ const startPaymentFlow = () => {
       paymentCountdown.value = 0
       paymentExpired.value = true
       stopPaymentTimer()
+      stopOrderPolling()
       paymentExpireTimeout.value = setTimeout(() => {
         checkoutStep.value = 'identify'
         activeOrder.value = null
         pixCode.value = ''
+        pixQrImage.value = ''
       }, 4000)
     }
   }, 1000)
@@ -598,21 +593,48 @@ const startPaymentFlow = () => {
 const handleGeneratePayment = async () => {
   if (!canGeneratePayment.value || !profile.value) return
 
+  generatingPayment.value = true
+  currentMessageIndex.value = 0
+
+  messageInterval.value = setInterval(() => {
+    currentMessageIndex.value = (currentMessageIndex.value + 1) % loadingMessages.length
+  }, 2000)
+
   try {
-    const newPixCode = buildPixCode(profile.value.nomeUser)
-    const order = await createOrderFromCart({
+    const response = await createOrderFromCart({
       userId: Number(profile.value.idUser),
       items: items.value,
       totalAmountInCents: totalAmountInCents.value,
-      pixCode: newPixCode,
+      description: `Pedido ${profile.value.nomeUser ?? ''}`.trim(),
     })
-    activeOrder.value = order
-    pixCode.value = newPixCode
-    checkoutStep.value = 'payment'
+    activeOrder.value = response.order
+    pixCode.value = response.pix?.qrCode ?? ''
+    pixQrImage.value = response.pix?.qrCodeBase64 ?? ''
+    pixExpiresAt.value = response.pix?.expiresAt ?? null
+
     paymentExpired.value = false
-    startPaymentFlow()
+    clearCart()
+    stopPaymentTimer()
+    stopOrderPolling()
+
+    if (messageInterval.value) {
+      clearInterval(messageInterval.value)
+      messageInterval.value = null
+    }
+
+    generatingPayment.value = false
+
+    await router.push({
+      path: '/pedidos',
+      query: { orderId: response.order.idOrder },
+    })
   } catch (error) {
     console.error('[cart] order creation failed', error)
+    if (messageInterval.value) {
+      clearInterval(messageInterval.value)
+      messageInterval.value = null
+    }
+    generatingPayment.value = false
   }
 }
 
@@ -626,7 +648,10 @@ const handleClearCart = () => {
   checkoutStep.value = 'review'
   activeOrder.value = null
   pixCode.value = ''
+  pixQrImage.value = ''
+  pixExpiresAt.value = null
   stopPaymentTimer()
+  stopOrderPolling()
 }
 
 watch(isAuthenticated, (logged) => {
@@ -636,10 +661,21 @@ watch(isAuthenticated, (logged) => {
     clearProfile()
     activeOrder.value = null
     pixCode.value = ''
+    pixQrImage.value = ''
+    pixExpiresAt.value = null
     stopPaymentTimer()
+    stopOrderPolling()
     if (checkoutStep.value !== 'review') {
       checkoutStep.value = 'review'
     }
+  }
+})
+
+watch(profile, (value) => {
+  if (value?.idUser) {
+    setCartOwner(value.idUser)
+  } else {
+    setCartOwner(null)
   }
 })
 
@@ -656,6 +692,7 @@ watch(hasItems, (value) => {
   if (!value) {
     checkoutStep.value = 'review'
     stopPaymentTimer()
+    stopOrderPolling()
   }
 })
 
@@ -663,6 +700,17 @@ watch(checkoutStep, (step) => {
   if (step !== 'payment') {
     stopPaymentTimer()
     paymentExpired.value = false
+    stopOrderPolling()
+  }
+})
+
+watch(activeOrder, (order) => {
+  if (order && order.statusOrder && order.statusOrder !== 'pending') {
+    stopOrderPolling()
+    if (order.statusOrder === 'paid') {
+      stopPaymentTimer()
+      paymentExpired.value = false
+    }
   }
 })
 
@@ -677,5 +725,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopPaymentTimer()
+  stopOrderPolling()
+  if (messageInterval.value) {
+    clearInterval(messageInterval.value)
+    messageInterval.value = null
+  }
 })
 </script>

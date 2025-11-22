@@ -158,7 +158,7 @@
               <footer class="text-xs text-slate-500 space-y-1">
                 <p>Acesso restrito a administradores do Trinket Store.</p>
                 <p>
-                  Precisa de ajuda? <a href="https://wa.me/5511967790534" target="_blank" rel="noopener noreferrer" class="text-slate-700 hover:text-slate-900 hover:underline transition-colors">Contate o suporte</a>.
+                  Precisa de ajuda? <a href="https://wa.me/5511947229703" target="_blank" rel="noopener noreferrer" class="text-slate-700 hover:text-slate-900 hover:underline transition-colors">Contate o suporte</a>.
                 </p>
               </footer>
             </div>

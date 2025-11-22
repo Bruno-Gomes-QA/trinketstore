@@ -21,34 +21,26 @@
           </div>
         </NuxtLink>
 
-        <!-- Info copy - Desktop only, centered -->
-        <div class="hidden lg:flex flex-1 justify-center space-y-1 text-sm">
-          <div class="flex items-center gap-3 text-muted-foreground">
-            <span class="inline-flex items-center gap-1.5">
-              <MapPin class="h-4 w-4 text-brand-cyan" />
-              Retirada no evento · 3° Andar - Lab 7
-            </span>
-            <span class="text-xs">Pagamentos via PIX ou cartão</span>
-          </div>
-        </div>
-
-        <!-- Actions -->
         <div class="flex items-center gap-2">
           <button
+            v-if="showHowItWorks"
+            type="button"
+            class="hidden md:inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-brand-cyan hover:text-brand-cyan"
             @click="emit('show-onboarding')"
-            class="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-brand-cyan hover:text-brand-cyan"
           >
             <Info class="h-4 w-4" />
-            <span class="hidden md:inline">Como funciona?</span>
+            <span>Como funciona?</span>
           </button>
 
-          <button
-            @click="scrollToProducts"
+          <a
+            v-if="showProductsButton"
+            href="/#catalogo"
             class="hidden md:inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:border-brand-cyan hover:text-brand-cyan"
+            @click.prevent="scrollToProducts"
           >
             <ShoppingBag class="h-4 w-4" />
-            <span>Ver produtos</span>
-          </button>
+            <span>Produtos</span>
+          </a>
 
           <NuxtLink
             to="/carrinho"
@@ -88,11 +80,18 @@
                 <span>{{ userInitials }}</span>
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" class="w-56 space-y-4">
+            <PopoverContent align="end" class="w-56 space-y-3">
               <div>
                 <p class="text-xs uppercase text-muted-foreground">Conectado como</p>
                 <p class="text-sm font-semibold text-foreground break-all">{{ userEmail }}</p>
               </div>
+              <NuxtLink
+                to="/pedidos"
+                class="flex w-full items-center justify-start gap-2 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:border-brand-cyan hover:text-brand-cyan"
+              >
+                <ClipboardList class="h-4 w-4" />
+                Pedidos
+              </NuxtLink>
               <button
                 type="button"
                 class="flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-destructive transition hover:border-destructive"
@@ -112,13 +111,25 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { ShoppingCart, Info, ShoppingBag, MapPin, LogOut } from 'lucide-vue-next'
+import { ShoppingCart, Info, ShoppingBag, MapPin, LogOut, ClipboardList } from 'lucide-vue-next'
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover'
 
 const { user, loading: authLoading, isAuthenticated, signInWithGoogle, signOut } = useSupabaseAuth()
-const { totalItems } = useStorefrontCart()
+const { totalItems, setCartOwner, clearCart } = useStorefrontCart()
+const router = useRouter()
+const route = useRoute()
 
 const emit = defineEmits(['show-onboarding'])
+const props = defineProps({
+  showHowItWorks: {
+    type: Boolean,
+    default: true,
+  },
+  showProductsButton: {
+    type: Boolean,
+    default: true,
+  },
+})
 const logoFullExists = ref(false)
 const profilePopoverOpen = ref(false)
 const cartCount = computed(() => totalItems.value)
@@ -138,18 +149,34 @@ const userInitials = computed(() => {
   return user.value?.email?.charAt(0).toUpperCase() ?? 'U'
 })
 
-const scrollToProducts = () => {
-  const section = document.getElementById('colecao-glow')
-  section?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
 const handleGoogleLogin = async () => {
   await signInWithGoogle()
 }
 
 const handleLogout = async () => {
   await signOut()
+  clearCart()
+  setCartOwner(null)
   profilePopoverOpen.value = false
+}
+
+const scrollToProducts = async () => {
+  // Se não estiver na home, navega primeiro
+  if (route.path !== '/') {
+    await router.push('/')
+    // Aguarda um pouco para a página carregar
+    setTimeout(() => {
+      const section = document.getElementById('catalogo')
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 300)
+  } else {
+    const section = document.getElementById('colecao-glow')
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
 }
 
 onMounted(() => {

@@ -83,6 +83,23 @@ export default defineNuxtPlugin(() => {
       await ensureUserRecord(nextUser)
     }
 
+    const maybeExchangeCode = async () => {
+      const currentUrl = window.location.href
+      const hasCode = currentUrl.includes('code=')
+      const hasAccessToken = currentUrl.includes('access_token=')
+      if (!hasCode && !hasAccessToken) return
+      try {
+        await supabase.auth.exchangeCodeForSession(currentUrl)
+        const url = new URL(currentUrl)
+        url.searchParams.delete('code')
+        url.searchParams.delete('state')
+        url.hash = ''
+        window.history.replaceState({}, document.title, url.toString())
+      } catch (error) {
+        console.error('[supabase] Failed to exchange auth code', error)
+      }
+    }
+
     supabase.auth.getSession().then(async ({ data, error }) => {
       if (error) {
         console.error('[supabase] Failed to fetch user', error)
@@ -96,6 +113,8 @@ export default defineNuxtPlugin(() => {
       syncAuthCookie(session ?? null)
       await handleUserChange(session?.user ?? null)
     })
+
+    maybeExchangeCode()
   }
 
   return {

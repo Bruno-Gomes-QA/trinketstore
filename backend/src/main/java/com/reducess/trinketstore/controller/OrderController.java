@@ -4,6 +4,7 @@ import com.reducess.trinketstore.dto.CreateOrderRequest;
 import com.reducess.trinketstore.dto.OrderResponse;
 import com.reducess.trinketstore.dto.UpdateOrderRequest;
 import com.reducess.trinketstore.service.OrderService;
+import com.reducess.trinketstore.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -107,6 +109,17 @@ public class OrderController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')")
+    @SecurityRequirement(name = "bearer-jwt")
+    @Operation(summary = "Cancelar pedido", description = "Permite que o cliente cancele e remova um pedido pendente")
+    public ResponseEntity<Void> cancelOrder(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        orderService.cancelOrderByCustomer(id, currentUser);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearer-jwt")
@@ -120,4 +133,3 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 }
-

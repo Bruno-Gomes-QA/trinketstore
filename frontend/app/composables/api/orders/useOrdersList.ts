@@ -27,18 +27,10 @@ export const useOrdersList = () => {
 
   const filteredOrders = computed(() => {
     return orders.value.filter((order) => {
-      const { status, checkoutId, paymentIntent, userId, search } = filtersState.value
+      const { status, userId, search } = filtersState.value
 
       const matchesStatus = status && status !== 'all'
         ? order.statusOrder === status
-        : true
-
-      const matchesCheckout = checkoutId
-        ? order.checkoutId.toLowerCase().includes(checkoutId.toLowerCase())
-        : true
-
-      const matchesPayment = paymentIntent
-        ? order.paymentIntent.toLowerCase().includes(paymentIntent.toLowerCase())
         : true
 
       const matchesUser = userId
@@ -57,7 +49,7 @@ export const useOrdersList = () => {
           })()
         : true
 
-      return matchesStatus && matchesCheckout && matchesPayment && matchesUser && matchesSearch
+      return matchesStatus && matchesUser && matchesSearch
     })
   })
 

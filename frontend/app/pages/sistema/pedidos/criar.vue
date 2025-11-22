@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { CheckCircle2, ClipboardCheck, CreditCard, Package, Search, ShoppingBag, UserRound } from 'lucide-vue-next'
+import { useClipboard } from '@vueuse/core'
+import { CheckCircle2, CreditCard, Package, QrCode, Search, ShoppingBag, UserRound } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
@@ -24,6 +25,9 @@ import {
 import { useToast } from '~/components/ui/toast/use-toast'
 import { useStorefrontCatalog } from '~/composables/storefront/useStorefrontCatalog'
 import type { StorefrontProduct } from '~/composables/storefront/useStorefrontCatalog'
+import { useStorefrontInventory } from '~/composables/storefront/useStorefrontInventory'
+import { useStorefrontCheckout } from '~/composables/storefront/useStorefrontCheckout'
+import type { PixCheckoutResponse } from '~/types/orders'
 
 definePageMeta({
   layout: 'sistema',
@@ -33,38 +37,43 @@ definePageMeta({
 
 const router = useRouter()
 const { toast } = useToast()
-const { formatCurrencyFromCents } = useFormatters()
-const ordersApi = useOrderMutations()
+const { copy, copied } = useClipboard()
+const { formatCurrencyFromCents, formatDateTime } = useFormatters()
 const usersApi = useUsersList()
 const { catalog, loading: catalogLoading, fetchCatalog } = useStorefrontCatalog()
+const { inventoryMap, fetchInventoryForProduct } = useStorefrontInventory()
+const {
+  createOrderFromCart,
+  creating: creatingOrder,
+  error: checkoutError,
+} = useStorefrontCheckout()
 
 const steps = [
-  { id: 1, title: 'Cliente', description: 'Selecione quem receberá o pedido.', icon: UserRound },
-  { id: 2, title: 'Itens', description: 'Monte o catálogo personalizado.', icon: ShoppingBag },
-  { id: 3, title: 'Pagamento', description: 'Associe checkout e intent.', icon: CreditCard },
-  { id: 4, title: 'Revisão', description: 'Confirme todos os dados.', icon: ClipboardCheck },
+  { id: 'customer', title: 'Cliente', description: 'Defina quem receberá o pedido.', icon: UserRound },
+  { id: 'items', title: 'Itens', description: 'Monte o carrinho com os produtos.', icon: ShoppingBag },
+  { id: 'payment', title: 'Pagamento', description: 'Gere o PIX e finalize.', icon: CreditCard },
 ] as const
+
+type StepId = (typeof steps)[number]['id']
 
 type SelectedOrderItem = {
   id: number
+  slug: string
   name: string
   description: string
   image: string
   priceInCents: number
   qty: number
+  availableStock: number
 }
 
-const currentStep = ref(1)
+const currentStep = ref<StepId>('customer')
 const stepError = ref('')
-const selectedUserId = ref<number | null>(null)
 const productSearch = ref('')
-const paymentForm = reactive({
-  checkoutId: '',
-  paymentIntent: '',
-  currencyOrder: 'BRL',
-})
-
+const selectedUserId = ref<number | null>(null)
 const selectedItemsState = ref<Record<number, SelectedOrderItem>>({})
+const paymentResult = ref<PixCheckoutResponse | null>(null)
+const paymentError = ref('')
 
 const filteredCatalog = computed(() => {
   const query = productSearch.value.trim().toLowerCase()
@@ -78,19 +87,24 @@ const filteredCatalog = computed(() => {
 
 const selectedItemsList = computed(() => Object.values(selectedItemsState.value))
 const hasSelectedItems = computed(() => selectedItemsList.value.length > 0)
-
-const progressPercent = computed(() => {
-  if (steps.length <= 1) return 100
-  return ((currentStep.value - 1) / (steps.length - 1)) * 100
-})
-
-const orderTotal = computed(() =>
-  selectedItemsList.value.reduce((sum, item) => sum + item.priceInCents * item.qty, 0),
-)
-
 const selectedUser = computed(() =>
   usersApi.users.value.find((user) => user.idUser === selectedUserId.value),
 )
+const stepIndex = computed(() => Math.max(steps.findIndex((step) => step.id === currentStep.value), 0))
+const progressPercent = computed(() => (steps.length <= 1 ? 100 : (stepIndex.value / (steps.length - 1)) * 100))
+const orderTotal = computed(() =>
+  selectedItemsList.value.reduce((sum, item) => sum + item.priceInCents * item.qty, 0),
+)
+const pixCode = computed(() => paymentResult.value?.pix?.qrCode ?? '')
+const pixQrUrl = computed(() => {
+  if (paymentResult.value?.pix?.qrCodeBase64) {
+    return `data:image/png;base64,${paymentResult.value.pix.qrCodeBase64}`
+  }
+  if (pixCode.value) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(pixCode.value)}`
+  }
+  return ''
+})
 
 const isProductSelected = (productId: number) => Boolean(selectedItemsState.value[productId])
 
@@ -99,7 +113,27 @@ const getShortDescription = (text: string) => {
   return text.length > 70 ? `${text.slice(0, 70)}…` : text
 }
 
-const toggleProductSelection = (product: StorefrontProduct) => {
+const clampQuantity = (qty: number, max: number) => {
+  const parsed = Number.isFinite(qty) ? qty : 1
+  const upper = Math.max(max || 1, 1)
+  return Math.min(Math.max(parsed, 1), upper)
+}
+
+const ensureInventory = async (productId: number) => {
+  try {
+    const cached = inventoryMap.value[productId]
+    if (cached) return cached
+    return await fetchInventoryForProduct(productId, { force: true })
+  } catch (error) {
+    console.error('[admin:orders:create] inventory fetch failed', error)
+    return null
+  }
+}
+
+const toggleProductSelection = async (product: StorefrontProduct) => {
+  stepError.value = ''
+  paymentResult.value = null
+
   if (!product.priceInCents) {
     toast({
       title: 'Preço indisponível',
@@ -116,22 +150,37 @@ const toggleProductSelection = (product: StorefrontProduct) => {
     return
   }
 
-  const updated = { ...selectedItemsState.value }
-  updated[product.id] = {
-    id: product.id,
-    name: product.name,
-    description: product.description,
-    image: product.image,
-    priceInCents: product.priceInCents,
-    qty: 1,
+  const snapshot = await ensureInventory(product.id)
+  if (snapshot && snapshot.qtyOnHand <= 0) {
+    toast({
+      title: 'Sem estoque',
+      description: 'Atualize o estoque deste item antes de adicioná-lo.',
+      variant: 'destructive',
+    })
+    return
   }
-  selectedItemsState.value = updated
+
+  const availableStock = snapshot ? snapshot.qtyOnHand : 1
+
+  selectedItemsState.value = {
+    ...selectedItemsState.value,
+    [product.id]: {
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      description: product.description,
+      image: product.image,
+      priceInCents: product.priceInCents,
+      qty: 1,
+      availableStock,
+    },
+  }
 }
 
 const updateQuantity = (productId: number, qty: number) => {
   const current = selectedItemsState.value[productId]
   if (!current) return
-  const sanitizedQty = Number.isNaN(qty) ? current.qty : Math.max(1, qty)
+  const sanitizedQty = clampQuantity(qty, current.availableStock || qty)
   selectedItemsState.value = {
     ...selectedItemsState.value,
     [productId]: {
@@ -139,6 +188,7 @@ const updateQuantity = (productId: number, qty: number) => {
       qty: sanitizedQty,
     },
   }
+  paymentResult.value = null
 }
 
 const handleQtyInput = (productId: number, event: Event) => {
@@ -152,63 +202,85 @@ const removeSelectedItem = (productId: number) => {
   const updated = { ...selectedItemsState.value }
   delete updated[productId]
   selectedItemsState.value = updated
+  paymentResult.value = null
 }
 
 const nextStep = () => {
   stepError.value = ''
-  if (currentStep.value === 1 && !selectedUserId.value) {
+  if (currentStep.value === 'customer' && !selectedUserId.value) {
     stepError.value = 'Selecione um cliente.'
     return
   }
-  if (currentStep.value === 2 && !hasSelectedItems.value) {
-    stepError.value = 'Adicione ao menos um produto com preço ativo.'
+  if (currentStep.value === 'items' && !hasSelectedItems.value) {
+    stepError.value = 'Adicione ao menos um produto com estoque.'
     return
   }
-  if (currentStep.value === 3 && (!paymentForm.checkoutId || !paymentForm.paymentIntent)) {
-    stepError.value = 'Informe checkout e payment intent.'
-    return
-  }
-  currentStep.value = Math.min(currentStep.value + 1, 4)
+  const next = steps[stepIndex.value + 1]
+  if (next) currentStep.value = next.id
 }
 
 const prevStep = () => {
   stepError.value = ''
-  currentStep.value = Math.max(currentStep.value - 1, 1)
+  const previous = steps[stepIndex.value - 1]
+  if (previous) currentStep.value = previous.id
 }
 
-const createOrder = async () => {
-  if (!selectedUserId.value || !hasSelectedItems.value) {
-    stepError.value = 'Preencha as etapas anteriores.'
+const handleGeneratePayment = async () => {
+  paymentError.value = ''
+  stepError.value = ''
+
+  if (!selectedUserId.value) {
+    stepError.value = 'Escolha um cliente antes de gerar pagamento.'
+    currentStep.value = 'customer'
     return
   }
-  const payload = {
-    userId: selectedUserId.value,
-    statusOrder: 'pending' as const,
-    totalOrders: orderTotal.value,
-    currencyOrder: paymentForm.currencyOrder,
-    checkoutId: paymentForm.checkoutId,
-    paymentIntent: paymentForm.paymentIntent,
-    items: selectedItemsList.value.map((item) => ({
-      productId: item.id,
-      qtyItems: item.qty,
-      unitAmount: item.priceInCents,
-      subtotalAmount: item.priceInCents * item.qty,
-    })),
+  if (!hasSelectedItems.value) {
+    stepError.value = 'Selecione produtos para gerar o pedido.'
+    currentStep.value = 'items'
+    return
   }
 
-  const created = await ordersApi.createOrder(payload)
-  if (created) {
-    toast({ title: 'Pedido criado', description: `Pedido #${created.idOrder} registrado.` })
-    router.push(`/sistema/pedidos/${created.idOrder}`)
+  try {
+    const response = await createOrderFromCart({
+      userId: selectedUserId.value,
+      items: selectedItemsList.value.map((item) => ({
+        productId: item.id,
+        slug: item.slug,
+        name: item.name,
+        image: item.image,
+        priceInCents: item.priceInCents,
+        quantity: item.qty,
+        availableStock: Math.max(item.availableStock, item.qty),
+      })),
+      totalAmountInCents: orderTotal.value,
+      description: `Pedido via painel para ${selectedUser.value?.nomeUser ?? 'cliente'}`,
+    })
+    paymentResult.value = response
+    toast({
+      title: 'Pedido criado',
+      description: `PIX gerado para o pedido #${response.order.idOrder}.`,
+    })
+  } catch (error) {
+    console.error('[admin:orders:create] payment generation failed', error)
+    paymentError.value = checkoutError.value?.message || 'Não foi possível gerar o pagamento agora.'
   }
 }
 
 watch(selectedUserId, (value) => {
-  if (value && currentStep.value === 1) {
+  if (value && currentStep.value === 'customer') {
     stepError.value = ''
-    currentStep.value = 2
+    currentStep.value = 'items'
   }
 })
+
+watch(
+  selectedItemsState,
+  () => {
+    paymentError.value = ''
+    paymentResult.value = null
+  },
+  { deep: true },
+)
 
 onMounted(async () => {
   await Promise.all([usersApi.fetchUsers(), fetchCatalog(true)])
@@ -220,10 +292,10 @@ onMounted(async () => {
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 class="text-2xl font-semibold">Criar novo pedido</h1>
-        <p class="text-sm text-muted-foreground">Acompanhe cada etapa e mantenha o cliente informado.</p>
+        <p class="text-sm text-muted-foreground">Siga o mesmo fluxo do ecommerce para registrar pedidos.</p>
       </div>
       <div class="text-sm text-muted-foreground">
-        Etapa {{ currentStep }} / 4
+        Etapa {{ stepIndex + 1 }} / {{ steps.length }}
       </div>
     </div>
 
@@ -244,13 +316,13 @@ onMounted(async () => {
             <div
               class="flex size-12 items-center justify-center rounded-full border-2 text-sm font-semibold transition"
               :class="[
-                currentStep > step.id ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : '',
+                stepIndex > steps.indexOf(step) ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : '',
                 currentStep === step.id ? 'border-primary bg-primary/10 text-primary' : '',
-                currentStep < step.id ? 'border-muted text-muted-foreground' : '',
+                stepIndex < steps.indexOf(step) ? 'border-muted text-muted-foreground' : '',
               ]"
             >
               <CheckCircle2
-                v-if="currentStep > step.id"
+                v-if="stepIndex > steps.indexOf(step)"
                 class="h-5 w-5"
               />
               <component v-else :is="step.icon" class="h-5 w-5" />
@@ -263,11 +335,11 @@ onMounted(async () => {
     </div>
 
     <div class="rounded-2xl border bg-card p-6 shadow-sm space-y-6">
-      <div v-if="currentStep === 1" class="space-y-5">
+      <div v-if="currentStep === 'customer'" class="space-y-5">
         <div>
           <h2 class="text-lg font-semibold">1. Selecione o cliente</h2>
           <p class="text-sm text-muted-foreground">
-            Apenas usuários administradores podem gerar pedidos em nome dos clientes.
+            Apenas administradores geram pedidos em nome dos clientes. Selecione o usuário para continuar.
           </p>
         </div>
         <div class="space-y-2">
@@ -296,11 +368,11 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div v-else-if="currentStep === 2" class="space-y-6">
+      <div v-else-if="currentStep === 'items'" class="space-y-6">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 class="text-lg font-semibold">2. Monte o pedido</h2>
-            <p class="text-sm text-muted-foreground">Selecione produtos e ajuste quantidades antes de seguir.</p>
+            <p class="text-sm text-muted-foreground">Selecione produtos, confira estoque e ajuste quantidades.</p>
           </div>
           <div
             v-if="selectedUser"
@@ -363,6 +435,12 @@ onMounted(async () => {
                     <p class="text-xs text-muted-foreground leading-snug">
                       {{ getShortDescription(product.description) }}
                     </p>
+                    <p class="text-[11px] text-muted-foreground">
+                      Estoque:
+                      <span class="font-semibold text-foreground">
+                        {{ inventoryMap[product.id]?.qtyOnHand ?? '—' }}
+                      </span>
+                    </p>
                   </div>
                 </div>
                 <div class="mt-3 flex items-center justify-between text-sm font-semibold">
@@ -415,12 +493,14 @@ onMounted(async () => {
                   <TableCell>
                     <div class="font-semibold">{{ item.name }}</div>
                     <p class="text-xs text-muted-foreground">{{ getShortDescription(item.description) }}</p>
+                    <p class="text-[11px] text-muted-foreground">Estoque: {{ item.availableStock }}</p>
                   </TableCell>
                   <TableCell>
                     <Input
                       type="number"
                       min="1"
                       class="h-9"
+                      :max="item.availableStock || undefined"
                       :value="item.qty"
                       @input="handleQtyInput(item.id, $event)"
                     />
@@ -453,34 +533,10 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div v-else-if="currentStep === 3" class="space-y-6">
-        <div>
-          <h2 class="text-lg font-semibold">3. Dados de pagamento</h2>
-          <p class="text-sm text-muted-foreground">Associe as referências do Stripe para conciliar o pedido.</p>
-        </div>
-        <div class="grid gap-4 md:grid-cols-2">
-          <div class="space-y-2">
-            <Label for="checkout">Checkout ID</Label>
-            <Input id="checkout" v-model="paymentForm.checkoutId" placeholder="chk_123" />
-          </div>
-          <div class="space-y-2">
-            <Label for="payment-intent">Payment Intent</Label>
-            <Input id="payment-intent" v-model="paymentForm.paymentIntent" placeholder="pi_123" />
-          </div>
-        </div>
-        <div class="rounded-2xl border bg-muted/40 p-4 text-sm">
-          <p class="text-xs uppercase text-muted-foreground">Resumo financeiro</p>
-          <p class="text-2xl font-semibold">{{ formatCurrencyFromCents(orderTotal) }}</p>
-          <p class="text-xs text-muted-foreground">
-            Confirme se o valor bate com o checkout vinculado antes de avançar.
-          </p>
-        </div>
-      </div>
-
       <div v-else class="space-y-6">
         <div>
-          <h2 class="text-lg font-semibold">4. Revisão final</h2>
-          <p class="text-sm text-muted-foreground">Confira cliente, itens, pagamento e total antes de criar o pedido.</p>
+          <h2 class="text-lg font-semibold">3. Pagamento PIX</h2>
+          <p class="text-sm text-muted-foreground">Geraremos o checkout usando o mesmo fluxo do ecommerce.</p>
         </div>
         <div class="grid gap-6 lg:grid-cols-[1.5fr,1fr]">
           <div class="rounded-2xl border p-4 space-y-4">
@@ -522,33 +578,96 @@ onMounted(async () => {
           </div>
 
           <div class="space-y-4 rounded-2xl border p-4">
-            <div>
+            <div class="space-y-1">
               <p class="text-xs uppercase text-muted-foreground">Cliente</p>
-              <p class="text-lg font-semibold">{{ selectedUser?.nomeUser || '—' }}</p>
+              <p class="text-lg font-semibold">{{ selectedUser?.nomeUser || 'Selecione um cliente' }}</p>
               <p class="text-xs text-muted-foreground">ID {{ selectedUser?.idUser || '—' }}</p>
             </div>
             <div class="space-y-2 text-sm">
               <div class="flex items-center justify-between">
-                <span class="text-muted-foreground">Checkout ID</span>
-                <span class="font-semibold">{{ paymentForm.checkoutId || '—' }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-muted-foreground">Payment Intent</span>
-                <span class="font-semibold">{{ paymentForm.paymentIntent || '—' }}</span>
-              </div>
-              <div class="flex items-center justify-between">
                 <span class="text-muted-foreground">Itens</span>
                 <span class="font-semibold">{{ selectedItemsList.length }}</span>
               </div>
-            </div>
-            <div class="border-t pt-4 text-base font-semibold">
               <div class="flex items-center justify-between">
-                <span>Total do pedido</span>
-                <span>{{ formatCurrencyFromCents(orderTotal) }}</span>
+                <span class="text-muted-foreground">Total</span>
+                <span class="font-semibold">{{ formatCurrencyFromCents(orderTotal) }}</span>
               </div>
-              <p class="mt-1 text-xs text-muted-foreground">
-                Pagamentos são conciliados em BRL ({{ paymentForm.currencyOrder }}).
+            </div>
+            <div class="space-y-3 rounded-xl border bg-muted/30 p-3 text-sm">
+              <p class="text-sm font-semibold text-foreground">Gerar pagamento</p>
+              <p class="text-xs text-muted-foreground">
+                Criaremos o pedido, checkout e payment intent automaticamente, igual ao fluxo do cliente.
               </p>
+              <div class="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  class="flex-1"
+                  :disabled="creatingOrder.value"
+                  @click="handleGeneratePayment"
+                >
+                  {{ creatingOrder.value ? 'Gerando PIX...' : 'Gerar PIX' }}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  class="flex-1"
+                  :disabled="creatingOrder.value"
+                  @click="router.push('/sistema/pedidos')"
+                >
+                  Ver listagem
+                </Button>
+              </div>
+              <p v-if="paymentError || checkoutError?.message" class="text-xs text-destructive">
+                {{ paymentError || checkoutError?.message }}
+              </p>
+            </div>
+
+            <div
+              v-if="paymentResult"
+              class="space-y-3 rounded-xl border bg-muted/40 p-4"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-xs uppercase text-muted-foreground">Pedido criado</p>
+                  <p class="text-lg font-semibold">#{{ paymentResult.order.idOrder }}</p>
+                  <p class="text-xs text-muted-foreground">Checkout: {{ paymentResult.order.checkoutId }}</p>
+                  <p class="text-xs text-muted-foreground">Payment intent: {{ paymentResult.order.paymentIntent }}</p>
+                </div>
+                <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  PIX gerado
+                </span>
+              </div>
+
+              <div class="rounded-xl border bg-background p-3">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border bg-white">
+                    <img
+                      v-if="pixQrUrl"
+                      :src="pixQrUrl"
+                      alt="QR Code PIX"
+                      class="h-full w-full object-contain"
+                    />
+                    <QrCode v-else class="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div class="flex-1 space-y-1 text-sm">
+                    <p class="font-semibold">Código PIX</p>
+                    <p class="text-xs break-all text-muted-foreground">{{ pixCode || 'Aguardando geração' }}</p>
+                    <div class="flex items-center gap-2 pt-1">
+                      <Button variant="secondary" size="sm" :disabled="!pixCode" @click="copy(pixCode)">
+                        {{ copied ? 'Copiado' : 'Copiar código' }}
+                      </Button>
+                      <Button variant="outline" size="sm" as-child>
+                        <NuxtLink :to="`/sistema/pedidos/${paymentResult.order.idOrder}`">
+                          Ver pedido
+                        </NuxtLink>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <p v-if="paymentResult.pix?.expiresAt" class="mt-2 text-[11px] text-muted-foreground">
+                  Expira em: {{ formatDateTime(paymentResult.pix.expiresAt) }}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -557,23 +676,23 @@ onMounted(async () => {
       <p v-if="stepError" class="text-sm text-destructive">{{ stepError }}</p>
 
       <div class="flex items-center justify-between pt-2">
-        <Button variant="ghost" type="button" :disabled="currentStep === 1" @click="prevStep">
+        <Button variant="ghost" type="button" :disabled="stepIndex === 0" @click="prevStep">
           Voltar
         </Button>
         <Button
-          v-if="currentStep < 4"
+          v-if="currentStep !== 'payment'"
           type="button"
           @click="nextStep"
         >
-          {{ currentStep === 1 ? 'Ir para produtos' : currentStep === 2 ? 'Ir para pagamento' : 'Revisar pedido' }}
+          {{ currentStep === 'customer' ? 'Ir para produtos' : 'Ir para pagamento' }}
         </Button>
         <Button
           v-else
           type="button"
-          :disabled="ordersApi.loading.value"
-          @click="createOrder"
+          :disabled="creatingOrder.value"
+          @click="handleGeneratePayment"
         >
-          {{ ordersApi.loading.value ? 'Criando...' : 'Criar pedido' }}
+          {{ creatingOrder.value ? 'Gerando PIX...' : 'Gerar pagamento' }}
         </Button>
       </div>
     </div>

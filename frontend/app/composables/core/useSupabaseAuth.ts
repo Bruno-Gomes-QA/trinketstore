@@ -1,4 +1,4 @@
-import { computed, readonly } from 'vue'
+import { computed, onMounted, readonly } from 'vue'
 import type { User } from '@supabase/supabase-js'
 
 export const useSupabaseAuth = () => {
@@ -36,10 +36,13 @@ export const useSupabaseAuth = () => {
     loading.value = true
     error.value = null
     try {
+      const redirectTo = typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}${window.location.search}`
+        : undefined
       const { error: authError } = await client.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}` : undefined,
+          redirectTo,
           queryParams: { prompt: 'select_account' },
         },
       })
@@ -60,11 +63,18 @@ export const useSupabaseAuth = () => {
     loading.value = true
     error.value = null
     try {
+      user.value = null
+      const authCookie = useCookie<string | null>('auth_token')
+      authCookie.value = null
       const { error: signOutError } = await client.auth.signOut()
       if (signOutError) {
         error.value = signOutError.message
         console.error('[supabase] signOut error', signOutError)
         return null
+      }
+      if (process.client && typeof localStorage !== 'undefined') {
+        localStorage.removeItem('sb-access-token')
+        localStorage.removeItem('sb-refresh-token')
       }
       user.value = null
       return true
@@ -74,6 +84,12 @@ export const useSupabaseAuth = () => {
   }
 
   const isAuthenticated = computed(() => Boolean(user.value))
+
+  onMounted(async () => {
+    if (process.client && supabaseClient && !user.value) {
+      await fetchCurrentUser()
+    }
+  })
 
   return {
     user: readonly(user),

@@ -20,7 +20,8 @@ public class OrderResponse {
     private String checkoutId;
     private String paymentIntent;
     private String pickupQrToken;
+    private String pixQrCodeBase64;
+    private OffsetDateTime pixExpiresAt;
     private OffsetDateTime createdAt;
     private List<OrderItemResponse> items;
 }
-

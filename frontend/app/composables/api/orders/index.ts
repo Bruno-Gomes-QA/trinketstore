@@ -1,3 +1,5 @@
 export { useOrdersList } from './useOrdersList'
 export { useOrderDetails } from './useOrderDetails'
 export { useOrderMutations } from './useOrderMutations'
+export { useOrdersPolling } from './useOrdersPolling'
+export { useOrdersManager } from './useOrdersManager'

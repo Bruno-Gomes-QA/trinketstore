@@ -11,6 +11,8 @@ export interface OrderEntity {
   checkoutId: string
   paymentIntent: string
   pickupQrToken?: string
+  pixQrCodeBase64?: string | null
+  pixExpiresAt?: string | null
   createdAt: string
   items?: OrderItemEntity[]
   userName?: string
@@ -21,8 +23,6 @@ export type OrderResponse = OrderEntity
 export interface OrderFilters {
   status?: OrderStatus | 'all'
   userId?: number
-  paymentIntent?: string
-  checkoutId?: string
   search?: string
 }
 
@@ -39,4 +39,18 @@ export interface CreateOrderPayload {
 
 export interface UpdateOrderStatusPayload {
   statusOrder: OrderStatus
+}
+
+export interface PixPaymentDetails {
+  paymentId: string
+  status: string
+  qrCode: string | null
+  qrCodeBase64: string | null
+  expiresAt: string | null
+  checkoutId: string
+}
+
+export interface PixCheckoutResponse {
+  order: OrderResponse
+  pix: PixPaymentDetails
 }

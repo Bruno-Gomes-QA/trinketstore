@@ -1,6 +1,7 @@
 import { computed, readonly, watch } from 'vue'
 import type { StorefrontCartItem } from '~/types/storefront/cart'
 import type { StorefrontProduct } from './useStorefrontCatalog'
+import { useSupabaseAuth } from '../core/useSupabaseAuth'
 
 const CART_STORAGE_KEY = 'trinket-store:cart:v1'
 
@@ -43,37 +44,82 @@ const sanitizeCartItems = (payload: unknown): StorefrontCartItem[] => {
 
 export const useStorefrontCart = () => {
   const items = useState<StorefrontCartItem[]>('storefront:cart:items', () => [])
-  const hydrated = useState('storefront:cart:hydrated', () => false)
+  const cartOwner = useState<string>('storefront:cart:owner', () => 'guest')
+  const lastHydratedOwner = useState<string | null>('storefront:cart:last-owner', () => null)
 
+  const { user: supabaseUser } = useSupabaseAuth()
   const isClient = typeof window !== 'undefined'
+  const storageKey = computed(() => `${CART_STORAGE_KEY}:${cartOwner.value}`)
 
   const persist = () => {
-    if (!isClient || !hydrated.value) return
+    if (!isClient || lastHydratedOwner.value !== cartOwner.value) return
     try {
-      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items.value))
+      if (!items.value.length) {
+        window.localStorage.removeItem(storageKey.value)
+        return
+      }
+      window.localStorage.setItem(storageKey.value, JSON.stringify(items.value))
     } catch (error) {
       console.error('[storefront:cart] Failed to persist cart', error)
     }
   }
 
-  const hydrateFromStorage = () => {
-    if (!isClient || hydrated.value) return
+  const hydrateFromStorage = (ownerKey = cartOwner.value) => {
+    if (!isClient) return
     try {
-      const storedValue = window.localStorage.getItem(CART_STORAGE_KEY)
+      const storedValue = window.localStorage.getItem(`${CART_STORAGE_KEY}:${ownerKey}`)
       if (storedValue) {
         const parsed = JSON.parse(storedValue)
         items.value = sanitizeCartItems(parsed)
+      } else {
+        items.value = []
       }
     } catch (error) {
       console.error('[storefront:cart] Failed to load cart', error)
     } finally {
-      hydrated.value = true
+      lastHydratedOwner.value = ownerKey
     }
   }
 
-  if (isClient && !hydrated.value) {
-    hydrateFromStorage()
+  const resolveOwnerKey = (ownerId?: string | number | null) => {
+    if (ownerId === null || ownerId === undefined || ownerId === '') return 'guest'
+    return `user:${String(ownerId)}`
   }
+
+  const setCartOwner = (ownerId?: string | number | null) => {
+    const normalized = resolveOwnerKey(ownerId)
+    if (cartOwner.value === normalized && lastHydratedOwner.value === normalized) {
+      return normalized
+    }
+
+    // Move itens do dono anterior para o novo dono se o novo estiver vazio
+    const previousOwner = cartOwner.value
+    const previousItems = [...items.value]
+
+    cartOwner.value = normalized
+    hydrateFromStorage(normalized)
+
+    if (previousItems.length && items.value.length === 0) {
+      items.value = previousItems
+      persist()
+      // opcional: limpar carrinho do dono anterior para evitar duplicar
+      if (isClient) {
+        window.localStorage.removeItem(`${CART_STORAGE_KEY}:${previousOwner}`)
+      }
+    }
+
+    return normalized
+  }
+
+  if (isClient) {
+    hydrateFromStorage(cartOwner.value)
+  }
+
+  watch(cartOwner, (ownerKey) => {
+    if (lastHydratedOwner.value !== ownerKey) {
+      hydrateFromStorage(ownerKey)
+    }
+  })
 
   watch(
     items,
@@ -81,6 +127,15 @@ export const useStorefrontCart = () => {
       persist()
     },
     { deep: true },
+  )
+
+  watch(
+    () => supabaseUser.value?.id,
+    (id) => {
+      const key = id ? `auth:${id}` : null
+      setCartOwner(key)
+    },
+    { immediate: true },
   )
 
   const addItem = (product: StorefrontProduct, quantity: number, availableStock: number) => {
@@ -129,6 +184,7 @@ export const useStorefrontCart = () => {
 
   const clearCart = () => {
     items.value = []
+    persist()
   }
 
   const setItemStock = (productId: number, qtyOnHand: number) => {
@@ -157,5 +213,6 @@ export const useStorefrontCart = () => {
     clearCart,
     setItemStock,
     hydrateFromStorage,
+    setCartOwner,
   }
 }

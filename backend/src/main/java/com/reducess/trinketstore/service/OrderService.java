@@ -1,10 +1,15 @@
 package com.reducess.trinketstore.service;
 
-import com.reducess.trinketstore.dto.*;
+import com.reducess.trinketstore.dto.CreateOrderItemRequest;
+import com.reducess.trinketstore.dto.CreateOrderRequest;
+import com.reducess.trinketstore.dto.OrderItemResponse;
+import com.reducess.trinketstore.dto.OrderResponse;
+import com.reducess.trinketstore.dto.UpdateOrderRequest;
 import com.reducess.trinketstore.entity.Order;
 import com.reducess.trinketstore.entity.OrderItem;
 import com.reducess.trinketstore.repository.OrderItemRepository;
 import com.reducess.trinketstore.repository.OrderRepository;
+import com.reducess.trinketstore.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +23,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
+    private final InventoryService inventoryService;
 
     @Transactional
     public OrderResponse createOrder(CreateOrderRequest request) {
@@ -31,6 +37,9 @@ public class OrderService {
             throw new RuntimeException("Já existe um pedido com este payment intent");
         }
 
+        inventoryService.verifyStockAvailability(request.getItems());
+        request.getItems().forEach(item -> inventoryService.removeStockByProductId(item.getProductId(), item.getQtyItems()));
+
         Order order = new Order();
         order.setUserId(request.getUserId());
         order.setStatusOrder(request.getStatusOrder() != null ? request.getStatusOrder() : "pending");
@@ -39,6 +48,8 @@ public class OrderService {
         order.setCheckoutId(request.getCheckoutId());
         order.setPaymentIntent(request.getPaymentIntent());
         order.setPickupQrToken(request.getPickupQrToken());
+        order.setPixQrCodeBase64(request.getPixQrCodeBase64());
+        order.setPixExpiresAt(request.getPixExpiresAt());
 
         Order savedOrder = orderRepository.save(order);
 
@@ -139,6 +150,14 @@ public class OrderService {
             order.setPickupQrToken(request.getPickupQrToken());
         }
 
+        if (request.getPixQrCodeBase64() != null) {
+            order.setPixQrCodeBase64(request.getPixQrCodeBase64());
+        }
+
+        if (request.getPixExpiresAt() != null) {
+            order.setPixExpiresAt(request.getPixExpiresAt());
+        }
+
         // Atualiza os itens do pedido se fornecidos
         if (request.getItems() != null) {
             // Remove os itens antigos
@@ -165,10 +184,28 @@ public class OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
 
+        restoreStock(order);
         // Remove os itens do pedido primeiro
         orderItemRepository.deleteByOrderId(id);
 
         // Remove o pedido
+        orderRepository.delete(order);
+    }
+
+    @Transactional
+    public void cancelOrderByCustomer(Integer orderId, UserPrincipal currentUser) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+
+        if (!order.getUserId().equals(currentUser.getUserId().intValue())) {
+            throw new RuntimeException("Você não pode cancelar este pedido.");
+        }
+        if (!"pending".equalsIgnoreCase(order.getStatusOrder())) {
+            throw new RuntimeException("Apenas pedidos pendentes podem ser cancelados.");
+        }
+
+        restoreStock(order);
+        orderItemRepository.deleteByOrderId(orderId);
         orderRepository.delete(order);
     }
 
@@ -182,6 +219,8 @@ public class OrderService {
         response.setCheckoutId(order.getCheckoutId());
         response.setPaymentIntent(order.getPaymentIntent());
         response.setPickupQrToken(order.getPickupQrToken());
+        response.setPixQrCodeBase64(order.getPixQrCodeBase64());
+        response.setPixExpiresAt(order.getPixExpiresAt());
         response.setCreatedAt(order.getCreatedAt());
 
         // Busca os itens do pedido
@@ -204,5 +243,11 @@ public class OrderService {
         response.setSubtotalAmount(item.getSubtotalAmount());
         return response;
     }
-}
 
+    private void restoreStock(Order order) {
+        List<OrderItem> items = orderItemRepository.findByOrderId(order.getIdOrder());
+        for (OrderItem item : items) {
+            inventoryService.addStockByProductId(item.getProductId(), item.getQtyItems());
+        }
+    }
+}

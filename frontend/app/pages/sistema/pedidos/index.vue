@@ -58,8 +58,6 @@ const { toast } = useToast()
 
 const searchTerm = ref('')
 const statusFilter = ref<'all' | OrderStatus>('all')
-const paymentFilter = ref('')
-const checkoutFilter = ref('')
 const userFilter = ref('')
 const statusPopoverOpen = ref<number | null>(null)
 const deletePopoverOpen = ref<number | null>(null)
@@ -104,14 +102,12 @@ const statusOptions = Object.entries(statusMeta).map(([value, meta]) => ({
 const updateFilterState = () => {
   setFilters({
     status: statusFilter.value === 'all' ? undefined : statusFilter.value,
-    paymentIntent: paymentFilter.value || undefined,
-    checkoutId: checkoutFilter.value || undefined,
     userId: userFilter.value ? Number(userFilter.value) : undefined,
     search: searchTerm.value || undefined,
   })
 }
 
-watch([statusFilter, paymentFilter, checkoutFilter, userFilter, searchTerm], () => {
+watch([statusFilter, userFilter, searchTerm], () => {
   updateFilterState()
 })
 
@@ -176,7 +172,7 @@ onMounted(() => {
     </div>
 
     <div class="rounded-2xl border bg-card p-4 shadow-sm space-y-4">
-      <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+      <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         <div class="space-y-1.5 lg:col-span-2">
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Busca rápida</p>
           <InputGroup class="h-12 bg-background">
@@ -185,7 +181,7 @@ onMounted(() => {
             </InputGroupAddon>
             <InputGroupInput
               v-model="searchTerm"
-              placeholder="ID, cliente, checkout ou payment"
+              placeholder="ID ou cliente"
               class="h-12"
             />
           </InputGroup>
@@ -208,22 +204,6 @@ onMounted(() => {
               <option value="picked_up">Retirado</option>
               <option value="canceled">Cancelado</option>
             </select>
-          </InputGroup>
-        </div>
-        <div class="space-y-1.5">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Payment Intent</p>
-          <InputGroup class="h-12 bg-background">
-            <InputGroupAddon class="text-muted-foreground">
-              <CreditCard class="h-4 w-4" />
-            </InputGroupAddon>
-            <InputGroupInput v-model="paymentFilter" placeholder="pi_123" class="h-12" />
-          </InputGroup>
-        </div>
-        <div class="space-y-1.5">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Checkout</p>
-          <InputGroup class="h-12 bg-background">
-            <InputGroupAddon class="text-muted-foreground font-semibold">chk_</InputGroupAddon>
-            <InputGroupInput v-model="checkoutFilter" placeholder="123" class="h-12" />
           </InputGroup>
         </div>
         <div class="space-y-1.5">
