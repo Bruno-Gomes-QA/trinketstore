@@ -30,6 +30,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     //(server-side) NUXT_BACKEND_URL
     backendUrl: `${process.env.NUXT_BACKEND_URL}`,
+    supabaseServiceKey: `${process.env.NUXT_SUPABASE_SERVICE_ROLE_KEY || ''}`,
     
     //(client-side) NUXT_PUBLIC_BACKEND_URL
     public: {

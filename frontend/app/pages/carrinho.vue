@@ -5,7 +5,7 @@
       <StoreHeader @show-onboarding="showOnboarding" />
 
       <main class="flex-1 py-10">
-        <div class="container mx-auto px-4">
+        <div class="container mx-auto px-3 sm:px-4">
           <NuxtLink
             to="/"
             class="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-brand-cyan"
@@ -14,8 +14,8 @@
             Voltar para a loja
           </NuxtLink>
 
-          <div class="rounded-3xl border border-border/60 bg-white/95 shadow-lg shadow-sky-100/70">
-            <div class="border-b border-border/50 px-4 py-4 sm:px-6 lg:px-10">
+          <div class="rounded-3xl border border-border/50 bg-white/95 shadow-sm shadow-sky-100/50">
+            <div class="border-b border-border/40 px-4 py-4 sm:px-6 lg:px-10">
               <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-5">
                   <div>
@@ -58,11 +58,11 @@
               </div>
             </div>
 
-            <div class="space-y-6 px-4 py-6 sm:px-6 lg:px-10">
+            <div class="space-y-6 px-3 py-6 sm:px-6 lg:px-10">
 
               <div
                 v-if="!hasItems"
-                class="rounded-3xl border border-dashed border-border bg-white/80 px-6 py-12 text-center shadow-inner"
+                class="rounded-2xl border border-dashed border-border bg-white/80 px-6 py-12 text-center shadow-inner"
               >
                 <p class="text-lg font-semibold text-foreground">Seu carrinho está vazio</p>
                 <p class="mt-2 text-sm text-muted-foreground">Explore nossa vitrine e escolha algo especial.</p>
@@ -75,12 +75,12 @@
               </div>
 
               <div v-else>
-                <div v-if="checkoutStep === 'review'" class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+                <div v-if="checkoutStep === 'review'" class="grid gap-5 lg:gap-6 lg:grid-cols-[2fr_1fr]">
                   <div class="space-y-4">
                     <article
                       v-for="item in items"
                       :key="item.productId"
-                      class="rounded-2xl border border-border/60 bg-white px-4 py-4 shadow-sm md:px-6"
+                      class="rounded-2xl border border-border/60 bg-white/90 px-4 py-4 shadow-sm md:px-6"
                     >
                       <div class="flex flex-col gap-4 md:flex-row md:items-start">
                         <div class="flex items-start gap-4">
@@ -139,7 +139,7 @@
                   </div>
 
                   <aside class="space-y-3">
-                    <div class="rounded-3xl border border-brand-cyan/30 bg-white p-5 shadow-sm">
+                    <div class="rounded-2xl border border-brand-cyan/30 bg-white p-5 shadow-sm">
                       <div class="flex items-center justify-between text-sm">
                         <span class="text-muted-foreground">Total</span>
                         <span class="text-2xl font-bold text-foreground">{{ formatCurrency(totalAmountInCents) }}</span>
@@ -165,8 +165,8 @@
                   </aside>
                 </div>
 
-                <div v-if="checkoutStep === 'identify'" class="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-                  <section class="rounded-3xl border border-brand-cyan/30 bg-white p-5 shadow-sm">
+                <div v-if="checkoutStep === 'identify'" class="grid gap-5 lg:gap-6 lg:grid-cols-[1.5fr_1fr]">
+                  <section class="rounded-2xl border border-brand-cyan/30 bg-white p-5 shadow-sm">
                     <p class="text-xs font-semibold uppercase tracking-[0.25em] text-brand-cyan">Passo 2</p>
                     <h2 class="text-xl font-bold text-foreground">Entrar com Google</h2>
                     <p class="text-sm text-muted-foreground">Use sua conta para ligar o pedido a você.</p>
@@ -214,10 +214,10 @@
                       v-if="checkoutError"
                       class="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
                     >
-                      {{ checkoutError?.message }}
+                      {{ normalizedCheckoutError }}
                     </div>
 
-                    <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <div class="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
                       <button
                         type="button"
                         class="inline-flex items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
@@ -234,6 +234,9 @@
                         <CheckCircle2 class="h-4 w-4" />
                         Gerar PIX
                       </button>
+                      <p v-if="paymentFlowError" class="text-xs text-destructive sm:ml-4 sm:text-right">
+                        {{ paymentFlowError }}
+                      </p>
                     </div>
                   </section>
 
@@ -278,7 +281,7 @@
                   </Dialog>
 
                   <aside class="space-y-3">
-                    <div class="rounded-3xl border border-border/60 bg-white p-5 shadow-sm">
+                    <div class="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
                       <p class="text-sm font-semibold text-foreground">Resumo</p>
                       <p class="text-2xl font-bold text-foreground">{{ formatCurrency(totalAmountInCents) }}</p>
                       <ul class="mt-3 space-y-2 text-xs text-muted-foreground">
@@ -302,7 +305,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type { Component } from 'vue'
 import { useClipboard } from '@vueuse/core'
 import { ArrowLeft, Trash2, RefreshCcw, Clock3, Copy, AlertTriangle, ShoppingCart, CheckCircle2, Sparkles, UserCheck, QrCode, Package, CreditCard, Loader2 } from 'lucide-vue-next'
@@ -341,6 +344,7 @@ useSeoMeta({
 })
 
 const router = useRouter()
+const route = useRoute()
 const checkoutSteps: Array<{ id: CheckoutStepId; label: string; description: string; icon: Component }> = [
   { id: 'review', label: 'Carrinho', description: 'Revise os itens e estoque', icon: ShoppingCart },
   { id: 'identify', label: 'Identificação', description: 'Conecte-se com Google', icon: UserCheck },
@@ -368,6 +372,7 @@ const { user: supabaseUser, isAuthenticated, loading: authLoading, signInWithGoo
 const { profile, fetchProfile, loading: profileLoading, clearProfile } = useStorefrontCustomer()
 const { createOrderFromCart, creating: creatingOrder, error: checkoutError } = useStorefrontCheckout()
 const { copy, copied } = useClipboard()
+const fallbackErrorMessage = 'Não foi possível processar o pedido agora. Tente novamente em instantes.'
 
 const checkoutStep = ref<CheckoutStepId>('review')
 const currentStepIndex = computed(() => checkoutSteps.findIndex((step) => step.id === checkoutStep.value))
@@ -391,6 +396,8 @@ const orderPollingInterval = ref<ReturnType<typeof setInterval> | null>(null)
 const generatingPayment = ref(false)
 const currentMessageIndex = ref(0)
 const messageInterval = ref<ReturnType<typeof setInterval> | null>(null)
+const paymentFlowError = ref<string | null>(null)
+const normalizedCheckoutError = computed(() => checkoutError.value?.message || fallbackErrorMessage)
 
 const cartBlockedMessage = computed(() => {
   if (!hasItems.value) return 'Adicione itens antes de continuar.'
@@ -504,6 +511,7 @@ const handleQuantityUpdate = (productId: number, value?: number | string, stockL
 
 const handleProceedToIdentify = () => {
   if (cartBlockedMessage.value) return
+  paymentFlowError.value = null
   checkoutStep.value = 'identify'
   if (isAuthenticated.value && !profile.value) {
     fetchProfile().catch((error) => console.error('[cart] profile fetch failed', error))
@@ -512,7 +520,7 @@ const handleProceedToIdentify = () => {
 
 const handleGoogleLogin = async () => {
   if (isAuthenticated.value) return
-  await signInWithGoogle()
+  await signInWithGoogle('/carrinho?step=identify')
 }
 
 const computeSecondsUntil = (raw?: string | null) => {
@@ -595,6 +603,7 @@ const handleGeneratePayment = async () => {
 
   generatingPayment.value = true
   currentMessageIndex.value = 0
+  paymentFlowError.value = null
 
   messageInterval.value = setInterval(() => {
     currentMessageIndex.value = (currentMessageIndex.value + 1) % loadingMessages.length
@@ -623,6 +632,7 @@ const handleGeneratePayment = async () => {
     }
 
     generatingPayment.value = false
+    paymentFlowError.value = null
 
     await router.push({
       path: '/pedidos',
@@ -635,6 +645,7 @@ const handleGeneratePayment = async () => {
       messageInterval.value = null
     }
     generatingPayment.value = false
+    paymentFlowError.value = normalizedCheckoutError.value
   }
 }
 
@@ -693,6 +704,8 @@ watch(hasItems, (value) => {
     checkoutStep.value = 'review'
     stopPaymentTimer()
     stopOrderPolling()
+  } else if (route.query.step === 'identify') {
+    checkoutStep.value = 'identify'
   }
 })
 
@@ -703,6 +716,16 @@ watch(checkoutStep, (step) => {
     stopOrderPolling()
   }
 })
+
+watch(
+  () => route.query.step,
+  (step) => {
+    if (step === 'identify' && hasItems.value) {
+      checkoutStep.value = 'identify'
+    }
+  },
+  { immediate: true },
+)
 
 watch(activeOrder, (order) => {
   if (order && order.statusOrder && order.statusOrder !== 'pending') {

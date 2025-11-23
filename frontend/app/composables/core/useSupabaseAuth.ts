@@ -30,14 +30,16 @@ export const useSupabaseAuth = () => {
     return data.user ?? null
   }
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (redirectPath?: string) => {
     const client = ensureClient()
     if (!client) return null
     loading.value = true
     error.value = null
     try {
       const redirectTo = typeof window !== 'undefined'
-        ? `${window.location.origin}${window.location.pathname}${window.location.search}`
+        ? redirectPath
+          ? `${window.location.origin}${redirectPath}`
+          : `${window.location.origin}${window.location.pathname}${window.location.search}`
         : undefined
       const { error: authError } = await client.auth.signInWithOAuth({
         provider: 'google',

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch, type Component } from 'vue'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -81,6 +82,7 @@ const { toast } = useToast()
 const { formatDateTime } = useFormatters()
 const { toSlug, sanitizeUrl, toCurrencyCents } = useNormalizers()
 const { isValidName, isValidSlug, isValidUrl, hasLengthBetween } = useValidators()
+const { $supabase } = useNuxtApp()
 const {
   products,
   filteredProducts,
@@ -100,6 +102,10 @@ const sheetMode = ref<'create' | 'edit'>('create')
 const deletePopoverOpen = ref<number | null>(null)
 const deletingProductId = ref<number | null>(null)
 const editingProductId = ref<number | null>(null)
+const uploadingImage = ref(false)
+const imageInputRef = ref<HTMLInputElement | null>(null)
+const supabaseClient = ($supabase ?? null) as SupabaseClient | null
+const runtimeConfig = useRuntimeConfig()
 
 type CreationStepKey = 'product' | 'inventory' | 'price' | 'done'
 type CreationStepStatus = 'pending' | 'in_progress' | 'success' | 'error'
@@ -238,6 +244,87 @@ const openEditSheet = (product: ProductEntity) => {
   sheetOpen.value = true
 }
 
+const buildImagePath = (file: File) => {
+  const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+  const base = toSlug(form.slugProduct || form.nomeProduct || 'produto')
+  return `products/${base || 'produto'}-${Date.now()}.${extension}`
+}
+
+const handleImageUpload = async (file: File) => {
+  if (!process.client || !supabaseClient) {
+    toast({
+      title: 'Upload indisponível',
+      description: 'Configure o Supabase para enviar imagens.',
+      variant: 'destructive',
+    })
+    return
+  }
+
+  if (!file.type.startsWith('image/')) {
+    formErrors.imagemurlProduct = 'Envie apenas arquivos de imagem.'
+    return
+  }
+
+  uploadingImage.value = true
+  formErrors.imagemurlProduct = ''
+
+  try {
+    const path = buildImagePath(file)
+    const signed = await $fetch<{ path: string; token: string; signedUrl: string; publicUrl: string }>(
+      '/api/storage/product-upload-url',
+      {
+        method: 'POST',
+        body: { path },
+      },
+    )
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from('trinketstore')
+      .uploadToSignedUrl(signed.path, signed.token, file)
+
+    if (uploadError) {
+      console.error('[products] upload failed', uploadError)
+      formErrors.imagemurlProduct = 'Não foi possível enviar a imagem. Tente novamente.'
+      return
+    }
+
+    const publicUrl = sanitizeUrl(signed.publicUrl)
+    form.imagemurlProduct = publicUrl
+    toast({
+      title: 'Imagem enviada',
+      description: 'A imagem foi salva no bucket e vinculada ao produto.',
+    })
+  } catch (error) {
+    console.error('[products] upload unexpected error', error)
+    formErrors.imagemurlProduct = 'Erro ao enviar imagem. Tente novamente.'
+  } finally {
+    uploadingImage.value = false
+  }
+}
+
+const handleImageSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement | null
+  const file = target?.files?.[0]
+  if (file) {
+    handleImageUpload(file)
+  }
+  if (target) {
+    target.value = ''
+  }
+}
+
+const handleImageDrop = (event: DragEvent) => {
+  event.preventDefault()
+  const file = event.dataTransfer?.files?.[0]
+  if (file) {
+    handleImageUpload(file)
+  }
+}
+
+const triggerImagePicker = () => {
+  imageInputRef.value?.click()
+}
+
 const validateForm = () => {
   let valid = true
   formErrors.nomeProduct = ''
@@ -264,7 +351,10 @@ const validateForm = () => {
     valid = false
   }
 
-  if (!isValidUrl(form.imagemurlProduct)) {
+  if (!form.imagemurlProduct) {
+    formErrors.imagemurlProduct = 'Envie ou cole uma imagem para este produto.'
+    valid = false
+  } else if (!isValidUrl(form.imagemurlProduct)) {
     formErrors.imagemurlProduct = 'URL inválida.'
     valid = false
   }
@@ -784,23 +874,50 @@ onMounted(() => {
                 Imagem destacada
               </FieldLabel>
               <FieldContent>
-                <InputGroup
-                  class="h-12"
-                  :class="formErrors.imagemurlProduct ? 'border-destructive ring-destructive/20' : ''"
+                <input
+                  ref="imageInputRef"
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  @change="handleImageSelect"
+                />
+                <div
+                  class="relative flex flex-col gap-3 rounded-xl border border-dashed border-border/70 bg-muted/30 p-4 text-sm transition hover:border-primary/60"
+                  :class="[
+                    formErrors.imagemurlProduct ? 'border-destructive ring-destructive/20 bg-destructive/5' : '',
+                    uploadingImage ? 'opacity-70' : '',
+                  ]"
+                  role="button"
+                  tabindex="0"
+                  @click="triggerImagePicker"
+                  @dragover.prevent
+                  @drop.prevent="handleImageDrop"
                 >
-                  <InputGroupAddon class="text-muted-foreground">
-                    <Link2 class="h-4 w-4" />
-                  </InputGroupAddon>
-                  <InputGroupInput
-                    id="product-image"
-                    v-model="form.imagemurlProduct"
-                    type="url"
-                    placeholder="https://cdn.trinketstore.com/produto.png"
-                    :aria-invalid="Boolean(formErrors.imagemurlProduct)"
-                    class="h-12"
-                  />
-                </InputGroup>
-                <FieldDescription>Suporte a imagens públicas (JPG, PNG ou WEBP).</FieldDescription>
+                  <div class="flex items-center gap-3">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-full border bg-white shadow-sm">
+                      <ImageIcon class="h-5 w-5 text-primary" />
+                    </div>
+                    <div class="flex-1">
+                      <p class="font-semibold text-foreground">Envie uma imagem do produto</p>
+                      <p class="text-xs text-muted-foreground">
+                        Arraste ou clique para enviar para o bucket Trinket Store.
+                      </p>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" class="whitespace-nowrap" :disabled="uploadingImage">
+                      <Loader2 v-if="uploadingImage" class="mr-2 h-4 w-4 animate-spin" />
+                      <span v-else>Selecionar</span>
+                    </Button>
+                  </div>
+                  <p class="text-[11px] text-muted-foreground">
+                    Formatos JPG, PNG ou WEBP. O link público é salvo automaticamente.
+                  </p>
+                </div>
+
+                <div class="mt-3 space-y-2">
+                  <div class="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                    {{ form.imagemurlProduct ? 'Imagem enviada e URL salva.' : 'Envie uma imagem para gerar a URL pública.' }}
+                  </div>
+                </div>
                 <FieldError v-if="formErrors.imagemurlProduct">
                   {{ formErrors.imagemurlProduct }}
                 </FieldError>
