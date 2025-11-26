@@ -1,7 +1,6 @@
-````mdc
 # 🛍️ Trinket Store - Painel Administrativo
 
-Sistema de gerenciamento de e-commerce para stands e lojas físicas com integração de pagamentos via Stripe e controle de retiradas por QR Code.
+Sistema de gerenciamento de e-commerce para stands e lojas físicas com integração de pagamentos via Mercado Pago e controle de retiradas por QR Code.
 
 ## 🎨 Identidade Visual
 
@@ -27,7 +26,7 @@ Sistema de gerenciamento de e-commerce para stands e lojas físicas com integra�
 ### Pedidos e Pagamentos
 - Criação de pedidos com cálculo automático
 - Status: `pending`, `paid`, `picked_up`, `canceled`
-- Integração com Stripe Checkout
+- Integração com Mercado Pago Checkout
 - Controle de preços local
 
 ### QR Code
@@ -50,70 +49,34 @@ Sistema de gerenciamento de e-commerce para stands e lojas físicas com integra�
 
 ## 📦 Setup
 
-Make sure to install dependencies:
+Certifique-se de instalar as dependências:
 
 ```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
 # bun
 bun install
 ```
 
-## 🔧 Development Server
+## 🔧 Servidor de Desenvolvimento
 
-Start the development server on `http://localhost:3000`:
+Inicie o servidor de desenvolvimento em `http://localhost:3000`:
 
 ```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
 # bun
 bun run dev
 ```
 
-## 🏗️ Production
+## 🏗️ Produção
 
-Build the application for production:
+Build da aplicação para produção:
 
 ```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
 # bun
 bun run build
 ```
 
-Locally preview production build:
+Pré-visualizar a build de produção localmente:
 
 ```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
 # bun
 bun run preview
 ```
@@ -125,7 +88,7 @@ bun run preview
 - **Estilização**: TailwindCSS v4
 - **Linguagem**: TypeScript
 - **Ícones**: Lucide Icons
-- **Pagamentos**: Stripe
+- **Pagamentos**: Mercado Pago
 
 ## 📝 Variáveis de Ambiente
 
@@ -133,9 +96,6 @@ bun run preview
 # Backend API URL
 NUXT_PUBLIC_BACKEND_URL=http://localhost:8080/api
 NUXT_BACKEND_URL=http://localhost:8080/api
-
-# Stripe (futuro)
-NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 ```
 
 ## 📚 Documentação Adicional
@@ -143,10 +103,7 @@ NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 - [Nuxt 3 Docs](https://nuxt.com/docs)
 - [Shadcn-vue Docs](https://www.shadcn-vue.com)
 - [TailwindCSS Docs](https://tailwindcss.com)
-- [Stripe Docs](https://stripe.com/docs)
 
 ---
 
 **Trinket Store** - Sistema de gerenciamento de e-commerce © 2025
-
-````
