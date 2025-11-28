@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,5 +33,14 @@ public class CheckoutController {
     public ResponseEntity<PixCheckoutResponse> createPixCheckout(@Valid @RequestBody PixCheckoutRequest request) {
         PixCheckoutResponse response = pixPaymentService.createPixCheckout(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/pix/{paymentId}/refresh")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')")
+    @SecurityRequirement(name = "bearer-jwt")
+    @Operation(summary = "Atualizar status do PIX", description = "Consulta o Mercado Pago e sincroniza o pedido local sem esperar o polling")
+    public ResponseEntity<PixCheckoutResponse> refreshPixPayment(@PathVariable String paymentId) {
+        PixCheckoutResponse response = pixPaymentService.refreshPixPayment(paymentId);
+        return ResponseEntity.ok(response);
     }
 }

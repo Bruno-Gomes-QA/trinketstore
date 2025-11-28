@@ -115,7 +115,7 @@ const statusMeta = computed(() => {
   if (normalized === 'canceled') {
     return {
       label: 'Pagamento cancelado',
-      description: 'Gere um novo PIX para tentar novamente.',
+      description: '',
       badge: 'bg-destructive/10 text-destructive border border-destructive/20',
     }
   }

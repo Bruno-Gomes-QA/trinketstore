@@ -13,6 +13,9 @@ public class MercadoPagoPaymentResponse {
     private Long id;
     private String status;
 
+    @JsonProperty("status_detail")
+    private String statusDetail;
+
     @JsonProperty("external_reference")
     private String externalReference;
 

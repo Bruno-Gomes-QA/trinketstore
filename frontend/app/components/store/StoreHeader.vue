@@ -10,15 +10,7 @@
             alt="Trinket Store"
             class="h-10 w-auto"
           />
-          <div v-else class="flex items-center gap-3">
-            <div class="h-11 w-11 rounded-xl bg-brand-cyan/15 text-brand-cyan flex items-center justify-center text-xl font-bold">
-              T
-            </div>
-            <div class="hidden sm:flex flex-col leading-tight">
-              <span class="text-lg font-semibold text-foreground">Trinket Store</span>
-              <span class="text-xs text-muted-foreground">Patos e tartarugas em resina</span>
-            </div>
-          </div>
+          <div v-else class="h-10 w-28" aria-hidden="true"></div>
         </NuxtLink>
 
         <div class="flex items-center gap-2">
@@ -161,22 +153,20 @@ const handleLogout = async () => {
 }
 
 const scrollToProducts = async () => {
-  // Se não estiver na home, navega primeiro
+  if (typeof document === 'undefined') return
+
+  const scroll = () => {
+    const section = document.getElementById('catalogo') ?? document.querySelector('[data-section="catalogo"]')
+    section?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   if (route.path !== '/') {
     await router.push('/')
-    // Aguarda um pouco para a página carregar
-    setTimeout(() => {
-      const section = document.getElementById('catalogo')
-      if (section) {
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }
-    }, 300)
-  } else {
-    const section = document.getElementById('colecao-glow')
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
+    setTimeout(scroll, 300)
+    return
   }
+
+  scroll()
 }
 
 onMounted(() => {

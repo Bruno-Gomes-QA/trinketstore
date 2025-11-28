@@ -28,10 +28,6 @@ public class MercadoPagoClient {
     @Value("${mercadopago.access-token:}")
     private String accessToken;
 
-    // continua configurável, mas hoje está opcional (não obrigatória)
-    @Value("${mercadopago.notification-url:https://example.com/api/webhooks/mercadopago}")
-    private String notificationUrl;
-
     private final WebClient.Builder webClientBuilder;
 
     private WebClient client() {
@@ -50,12 +46,20 @@ public class MercadoPagoClient {
      * @param description       descrição do pedido
      * @param externalReference referência única do seu sistema (pedido, carrinho etc.)
      * @param payerEmail        e-mail do pagador (opcional)
+     * @param payerFirstName    nome do pagador (opcional)
+     * @param payerLastName     sobrenome do pagador (opcional)
+     * @param payerDocumentType tipo do documento (ex: CPF)
+     * @param payerDocument     número do documento
      */
     public MercadoPagoPaymentResponse createPixPayment(
             BigDecimal value,
             String description,
             String externalReference,
-            String payerEmail
+            String payerEmail,
+            String payerFirstName,
+            String payerLastName,
+            String payerDocumentType,
+            String payerDocument
     ) {
         Map<String, Object> body = new HashMap<>();
         body.put("transaction_amount", value);
@@ -67,17 +71,23 @@ public class MercadoPagoClient {
                         ? externalReference
                         : "ref-" + System.currentTimeMillis());
 
-        // Se quiser voltar a usar webhook no futuro, descomente essa linha
-        // body.put("notification_url", notificationUrl);
-
         Map<String, Object> payer = new HashMap<>();
         payer.put("email",
                 StringUtils.hasText(payerEmail) ? payerEmail : "cliente@example.com");
+        payer.put("first_name", StringUtils.hasText(payerFirstName) ? payerFirstName : "Test");
+        payer.put("last_name", StringUtils.hasText(payerLastName) ? payerLastName : "User");
+
+        Map<String, Object> identification = new HashMap<>();
+        identification.put("type", StringUtils.hasText(payerDocumentType) ? payerDocumentType : "CPF");
+        identification.put("number", StringUtils.hasText(payerDocument) ? payerDocument : "19119119100");
+        payer.put("identification", identification);
+
         body.put("payer", payer);
 
         // Gera uma chave de idempotência única por tentativa
         String idempotencyKey = UUID.randomUUID().toString();
         log.info("Criando pagamento PIX no Mercado Pago com X-Idempotency-Key={}", idempotencyKey);
+        log.debug("Payload enviado ao Mercado Pago: {}", body);
 
         MercadoPagoPaymentResponse response = client()
                 .post()

@@ -4,7 +4,7 @@
       <div class="grid items-center gap-10 rounded-3xl bg-white p-6 md:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.05),0_0_40px_rgba(6,182,212,0.2)] border border-brand-cyan/10 lg:grid-cols-[1.1fr_0.9fr]">
         <!-- Text -->
         <div class="space-y-6 text-center lg:text-left">
-          <div class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-cyan to-cyan-500 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-black shadow-lg shadow-brand-cyan/30">
+          <div class="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-black shadow-lg shadow-emerald-400/30">
             ✨ Coleção 2025
           </div>
           <div class="space-y-4">
@@ -42,7 +42,7 @@
             </button>
             <button
               @click="scrollToProducts"
-              class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-cyan to-cyan-500 px-5 py-3 text-sm font-semibold text-black shadow-lg shadow-brand-cyan/30 transition-all hover:shadow-xl hover:shadow-brand-cyan/50 hover:-translate-y-0.5 hover:from-cyan-500 hover:to-brand-cyan"
+              class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-400 px-5 py-3 text-sm font-semibold text-black shadow-lg shadow-emerald-400/30 transition-all hover:shadow-xl hover:shadow-emerald-500/50 hover:-translate-y-0.5 hover:bg-emerald-500"
             >
               Ver produtos
             </button>
@@ -103,7 +103,8 @@ import { Palette, Sparkles, Clock } from 'lucide-vue-next'
 const emit = defineEmits(['show-onboarding'])
 
 const scrollToProducts = () => {
-  const section = document.getElementById('colecao-glow')
+  if (typeof document === 'undefined') return
+  const section = document.getElementById('catalogo') ?? document.querySelector('[data-section=\"catalogo\"]')
   section?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
