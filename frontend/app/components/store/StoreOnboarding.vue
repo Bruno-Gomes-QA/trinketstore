@@ -79,7 +79,7 @@ const steps = [
   },
   {
     title: 'Retire no evento',
-    description: 'Leve o QR Code até o 3° andar, Lab 7, e retire os itens sem filas.',
+    description: 'Leve o QR Code até a Sala 4, à direita após a passarela, e retire os itens.',
     tag: 'Retirada',
     icon: MapPin,
   },

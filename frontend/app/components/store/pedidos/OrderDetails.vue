@@ -86,7 +86,7 @@ defineEmits<{
 }>()
 
 const { formatCurrencyFromCents } = useFormatters()
-const LOCAL_RETRIEVAL = '3º andar - Lab 7'
+const LOCAL_RETRIEVAL = 'Sala 4, à direita após a passarela'
 
 const formatCurrency = (amount: number) => formatCurrencyFromCents(amount ?? 0)
 const formatDate = (iso?: string | null) => {
